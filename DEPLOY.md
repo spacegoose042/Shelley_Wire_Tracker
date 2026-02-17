@@ -63,6 +63,7 @@ Use your GitHub username/password or a **Personal Access Token** (recommended) w
    | `DATABASE_URL`      | From the PostgreSQL service: click it → **Variables** → copy `DATABASE_URL`, or use the **Reference** option to link it. |
    | `NEXTAUTH_SECRET`   | A long random string, e.g. run `openssl rand -base64 32` in a terminal and paste the result. |
    | `NEXTAUTH_URL`      | Your app URL. After first deploy: **Settings** → **Networking** → **Generate domain**, then use that URL (e.g. `https://shelley-wire-tracker-production.up.railway.app`). |
+   | `AUTH_TRUST_HOST`  | Set to `true` on Railway so NextAuth trusts the proxy (required for login to work). |
 
 3. **Build & start (Railway usually detects Next.js):**
    - **Build Command:** `npm run build`
