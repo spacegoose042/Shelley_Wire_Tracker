@@ -7,7 +7,7 @@ import { z } from "zod";
 const updateSchema = z.object({
   partNumber: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
-  location: z.string().nullable().optional(),
+  location: z.string().optional(),
   unit: z.enum(["FEET", "EACH"]).optional(),
   currentQuantity: z.number().min(0).optional(),
 });
@@ -55,17 +55,18 @@ export async function PATCH(
   if (!part) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const data = parsed.data;
-  if (data.partNumber && data.partNumber !== part.partNumber) {
-    const existing = await prisma.part.findUnique({
-      where: { partNumber: data.partNumber },
-    });
-    if (existing) return NextResponse.json({ error: "Part number already in use" }, { status: 400 });
-  }
+  const newPartNumber = data.partNumber ?? part.partNumber;
+  const newLocation = data.location !== undefined ? (data.location ?? "") : part.location;
+  const existing = await prisma.part.findUnique({
+    where: { partNumber_location: { partNumber: newPartNumber, location: newLocation } },
+  });
+  if (existing && existing.id !== part.id)
+    return NextResponse.json({ error: "Part number + location already in use" }, { status: 400 });
 
-  const updateData: { partNumber?: string; description?: string | null; location?: string | null; unit?: "FEET" | "EACH"; currentQuantity?: number } = {};
-  if (data.partNumber) updateData.partNumber = data.partNumber;
+  const updateData: { partNumber?: string; description?: string | null; location?: string; unit?: "FEET" | "EACH"; currentQuantity?: number } = {};
+  if (data.partNumber !== undefined) updateData.partNumber = data.partNumber;
   if (data.description !== undefined) updateData.description = data.description;
-  if (data.location !== undefined) updateData.location = data.location;
+  if (data.location !== undefined) updateData.location = data.location ?? "";
   if (data.unit) updateData.unit = data.unit;
   if (typeof data.currentQuantity === "number") updateData.currentQuantity = data.currentQuantity;
 

@@ -24,14 +24,16 @@ enum Role {
 
 model Part {
   id              String   @id @default(cuid())
-  partNumber      String   @unique
+  partNumber      String
   description     String?
-  location        String?
+  location        String   @default("")
   unit            Unit     @default(FEET)
   currentQuantity Decimal  @default(0) @db.Decimal(12, 2)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   lines           TransactionLine[]
+
+  @@unique([partNumber, location])
 }
 
 enum Unit {

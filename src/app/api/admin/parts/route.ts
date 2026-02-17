@@ -42,17 +42,18 @@ export async function POST(request: Request) {
   if (!parsed.success)
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
 
+  const location = (parsed.data.location?.trim() ?? "") || "";
   const existing = await prisma.part.findUnique({
-    where: { partNumber: parsed.data.partNumber },
+    where: { partNumber_location: { partNumber: parsed.data.partNumber, location } },
   });
   if (existing)
-    return NextResponse.json({ error: "Part number already exists" }, { status: 400 });
+    return NextResponse.json({ error: "This part number already exists at this location" }, { status: 400 });
 
   const part = await prisma.part.create({
     data: {
       partNumber: parsed.data.partNumber,
       description: parsed.data.description ?? null,
-      location: parsed.data.location?.trim() || null,
+      location,
       unit: parsed.data.unit,
       currentQuantity: parsed.data.currentQuantity,
     },

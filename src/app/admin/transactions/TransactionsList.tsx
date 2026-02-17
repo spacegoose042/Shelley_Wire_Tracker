@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Transaction = {
   id: string;
@@ -53,6 +54,9 @@ export function TransactionsList() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">
                   Parts
                 </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-shelley-gray">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
@@ -73,6 +77,14 @@ export function TransactionsList() {
                         </li>
                       ))}
                     </ul>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <Link
+                      href={`/admin/transactions/${t.id}`}
+                      className="text-sm text-shelley-blue hover:underline"
+                    >
+                      Edit
+                    </Link>
                   </td>
                 </tr>
               ))}
