@@ -39,7 +39,7 @@ export default async function AdminEditTransactionPage({
   const initial = {
     id: t.id,
     jobName: t.jobName,
-    createdAt: t.createdAt,
+    createdAt: t.createdAt.toISOString(),
     user: t.user,
     lines: t.lines.map((l) => ({
       id: l.id,
@@ -47,7 +47,7 @@ export default async function AdminEditTransactionPage({
       partNumber: l.part.partNumber,
       description: l.part.description,
       location: l.part.location,
-      unit: l.part.unit,
+      unit: l.part.unit as string,
       quantity: Number(l.quantity),
     })),
   };

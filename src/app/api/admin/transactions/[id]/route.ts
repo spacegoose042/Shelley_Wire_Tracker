@@ -89,7 +89,7 @@ export async function PATCH(
   const { jobName, lines: newLines } = parsed.data;
 
   if (newLines !== undefined) {
-    const partIds = [...new Set(newLines.map((l) => l.partId))];
+    const partIds = Array.from(new Set(newLines.map((l) => l.partId)));
     const parts = await prisma.part.findMany({ where: { id: { in: partIds } } });
     if (parts.length !== partIds.length)
       return NextResponse.json({ error: "One or more parts not found" }, { status: 400 });
