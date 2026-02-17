@@ -33,3 +33,5 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/*_migration_lock.toml
+
+SETUP_SECRET = dd88188f51bc56f965deb5807e6c13f7
