@@ -9,11 +9,20 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const authError = searchParams.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [logoError, setLogoError] = useState(false);
+
+  const errorMessage =
+    error ||
+    (authError === "Configuration"
+      ? "Server sign-in is misconfigured. Please contact support."
+      : authError
+        ? "Sign-in error. Please try again."
+        : "");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,9 +95,9 @@ function LoginForm() {
                 autoComplete="current-password"
               />
             </div>
-            {error && (
+            {errorMessage && (
               <p className="text-sm text-shelley-red" role="alert">
-                {error}
+                {errorMessage}
               </p>
             )}
             <button type="submit" className="btn-primary w-full" disabled={loading}>
