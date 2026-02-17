@@ -59,8 +59,12 @@ export async function GET(request: Request) {
   } catch (e) {
     console.error("Setup error:", e);
     const message = e instanceof Error ? e.message : String(e);
+    const isLocalhost = process.env.DATABASE_URL?.includes("localhost") || message.includes("localhost");
+    const hint = isLocalhost
+      ? " Your Web Service is using a localhost DATABASE_URL. In Railway: open your Web Service → Variables → set DATABASE_URL to your Postgres URL (use Add variable reference → Postgres service → DATABASE_URL)."
+      : "";
     return NextResponse.json(
-      { ok: false, error: "Setup failed: " + message },
+      { ok: false, error: "Setup failed: " + message + hint },
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
