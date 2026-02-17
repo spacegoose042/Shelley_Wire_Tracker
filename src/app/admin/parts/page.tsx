@@ -2,8 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { AdminNav } from "@/components/AdminNav";
-import { PartsList } from "./PartsList";
-import { AddPartForm } from "./AddPartForm";
+import { AdminPartsContent } from "./AdminPartsContent";
 
 export default async function AdminPartsPage() {
   const session = await getServerSession(authOptions);
@@ -16,8 +15,7 @@ export default async function AdminPartsPage() {
         <p className="mt-1 text-shelley-gray">Manage part numbers and inventory.</p>
       </div>
       <AdminNav />
-      <AddPartForm />
-      <PartsList />
+      <AdminPartsContent />
     </div>
   );
 }

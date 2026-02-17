@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function AddPartForm() {
+export function AddPartForm({ onSuccess }: { onSuccess?: () => void }) {
   const router = useRouter();
   const [partNumber, setPartNumber] = useState("");
   const [description, setDescription] = useState("");
@@ -40,6 +40,7 @@ export function AddPartForm() {
     setPartNumber("");
     setDescription("");
     setCurrentQuantity("");
+    onSuccess?.();
     router.refresh();
   }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 type Part = {
@@ -12,18 +11,18 @@ type Part = {
   currentQuantity: number;
 };
 
-export function PartsList() {
-  const router = useRouter();
+export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
   const [parts, setParts] = useState<Part[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetch("/api/admin/parts")
       .then((r) => r.json())
       .then((data) => setParts(Array.isArray(data) ? data : []))
       .catch(() => setParts([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   if (loading) return <p className="text-shelley-gray">Loading parts…</p>;
   if (parts.length === 0)
