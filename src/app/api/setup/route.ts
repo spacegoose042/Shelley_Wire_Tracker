@@ -6,6 +6,7 @@ const ADMIN_EMAIL = "deb@shelleyelectric.com";
 const ADMIN_PASSWORD = "DebIsHot*42";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
