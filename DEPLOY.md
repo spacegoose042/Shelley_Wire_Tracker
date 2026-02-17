@@ -108,6 +108,16 @@ Railway doesn’t run Prisma for you. Run these once from your **local machine**
 
 ---
 
+## Troubleshooting
+
+**"Can't reach database server at localhost:5432"**  
+The Web Service is using a local/default `DATABASE_URL`. It must use Railway’s Postgres URL. In the **Web Service** → **Variables**, set `DATABASE_URL` to the **Postgres** service’s `DATABASE_URL` (use **Add variable reference** → choose Postgres → `DATABASE_URL`). Do not paste a `localhost` URL.
+
+**Auth error page shows localhost:3000 or redirects to localhost**  
+Set `NEXTAUTH_URL` on the **Web Service** to your real app URL, e.g. `https://shelleywiretracker-production.up.railway.app` (no trailing slash). Then redeploy.
+
+---
+
 ## Quick reference
 
 | Step | Action |
