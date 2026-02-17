@@ -7,6 +7,7 @@ export function AddPartForm({ onSuccess }: { onSuccess?: () => void }) {
   const router = useRouter();
   const [partNumber, setPartNumber] = useState("");
   const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
   const [unit, setUnit] = useState<"FEET" | "EACH">("FEET");
   const [currentQuantity, setCurrentQuantity] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,7 @@ export function AddPartForm({ onSuccess }: { onSuccess?: () => void }) {
       body: JSON.stringify({
         partNumber: partNumber.trim(),
         description: description.trim() || undefined,
+        location: location.trim() || undefined,
         unit,
         currentQuantity: qty,
       }),
@@ -39,6 +41,7 @@ export function AddPartForm({ onSuccess }: { onSuccess?: () => void }) {
     }
     setPartNumber("");
     setDescription("");
+    setLocation("");
     setCurrentQuantity("");
     onSuccess?.();
     router.refresh();
@@ -66,6 +69,16 @@ export function AddPartForm({ onSuccess }: { onSuccess?: () => void }) {
             onChange={(e) => setDescription(e.target.value)}
             className="input-field"
             placeholder="Optional"
+          />
+        </div>
+        <div className="min-w-[140px]">
+          <label className="mb-1 block text-sm text-shelley-gray">Location</label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="input-field"
+            placeholder="e.g. Bin A-12"
           />
         </div>
         <div>

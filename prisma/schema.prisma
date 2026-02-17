@@ -26,6 +26,7 @@ model Part {
   id              String   @id @default(cuid())
   partNumber      String   @unique
   description     String?
+  location        String?
   unit            Unit     @default(FEET)
   currentQuantity Decimal  @default(0) @db.Decimal(12, 2)
   createdAt       DateTime @default(now())

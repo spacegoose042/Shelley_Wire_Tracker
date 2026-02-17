@@ -26,6 +26,7 @@ export default async function AdminPartEditPage({
         id={part.id}
         partNumber={part.partNumber}
         description={part.description ?? ""}
+        location={part.location ?? ""}
         unit={part.unit}
         currentQuantity={Number(part.currentQuantity)}
       />

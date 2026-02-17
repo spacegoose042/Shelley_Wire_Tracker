@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       : undefined,
     orderBy: { partNumber: "asc" },
     take: 20,
-    select: { id: true, partNumber: true, description: true, unit: true, currentQuantity: true },
+    select: { id: true, partNumber: true, description: true, location: true, unit: true, currentQuantity: true },
   });
 
   return NextResponse.json(

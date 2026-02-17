@@ -8,14 +8,16 @@ type Props = {
   id: string;
   partNumber: string;
   description: string;
+  location: string;
   unit: string;
   currentQuantity: number;
 };
 
-export function EditPartForm({ id, partNumber, description, unit, currentQuantity }: Props) {
+export function EditPartForm({ id, partNumber, description, location, unit, currentQuantity }: Props) {
   const router = useRouter();
   const [partNumberVal, setPartNumberVal] = useState(partNumber);
   const [descriptionVal, setDescriptionVal] = useState(description);
+  const [locationVal, setLocationVal] = useState(location);
   const [unitVal, setUnitVal] = useState<"FEET" | "EACH">(unit as "FEET" | "EACH");
   const [qtyVal, setQtyVal] = useState(String(currentQuantity));
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,7 @@ export function EditPartForm({ id, partNumber, description, unit, currentQuantit
       body: JSON.stringify({
         partNumber: partNumberVal.trim(),
         description: descriptionVal.trim() || null,
+        location: locationVal.trim() || null,
         unit: unitVal,
         currentQuantity: qty,
       }),
@@ -69,6 +72,16 @@ export function EditPartForm({ id, partNumber, description, unit, currentQuantit
             value={descriptionVal}
             onChange={(e) => setDescriptionVal(e.target.value)}
             className="input-field"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm text-shelley-gray">Location</label>
+          <input
+            type="text"
+            value={locationVal}
+            onChange={(e) => setLocationVal(e.target.value)}
+            className="input-field"
+            placeholder="e.g. Bin A-12"
           />
         </div>
         <div>

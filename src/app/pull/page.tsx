@@ -9,6 +9,7 @@ type PartOption = {
   id: string;
   partNumber: string;
   description: string | null;
+  location: string | null;
   unit: string;
   currentQuantity: number;
 };
@@ -211,7 +212,8 @@ export default function PullPage() {
                           className="w-full px-3 py-2 text-left text-sm hover:bg-shelley-blue/10"
                         >
                           {p.partNumber}
-                          {p.description ? ` – ${p.description}` : ""} (on hand: {p.currentQuantity}{" "}
+                          {p.description ? ` – ${p.description}` : ""}
+                          {p.location ? ` [${p.location}]` : ""} (on hand: {p.currentQuantity}{" "}
                           {p.unit === "FEET" ? "ft" : "ea"})
                         </button>
                       </li>

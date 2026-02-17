@@ -7,6 +7,7 @@ import { z } from "zod";
 const updateSchema = z.object({
   partNumber: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
   unit: z.enum(["FEET", "EACH"]).optional(),
   currentQuantity: z.number().min(0).optional(),
 });
@@ -61,9 +62,10 @@ export async function PATCH(
     if (existing) return NextResponse.json({ error: "Part number already in use" }, { status: 400 });
   }
 
-  const updateData: { partNumber?: string; description?: string | null; unit?: "FEET" | "EACH"; currentQuantity?: number } = {};
+  const updateData: { partNumber?: string; description?: string | null; location?: string | null; unit?: "FEET" | "EACH"; currentQuantity?: number } = {};
   if (data.partNumber) updateData.partNumber = data.partNumber;
   if (data.description !== undefined) updateData.description = data.description;
+  if (data.location !== undefined) updateData.location = data.location;
   if (data.unit) updateData.unit = data.unit;
   if (typeof data.currentQuantity === "number") updateData.currentQuantity = data.currentQuantity;
 

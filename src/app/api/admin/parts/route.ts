@@ -7,6 +7,7 @@ import { z } from "zod";
 const createPartSchema = z.object({
   partNumber: z.string().min(1),
   description: z.string().optional(),
+  location: z.string().optional(),
   unit: z.enum(["FEET", "EACH"]).default("FEET"),
   currentQuantity: z.number().min(0).default(0),
 });
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     data: {
       partNumber: parsed.data.partNumber,
       description: parsed.data.description ?? null,
+      location: parsed.data.location?.trim() || null,
       unit: parsed.data.unit,
       currentQuantity: parsed.data.currentQuantity,
     },

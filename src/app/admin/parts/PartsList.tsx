@@ -7,6 +7,7 @@ type Part = {
   id: string;
   partNumber: string;
   description: string | null;
+  location: string | null;
   unit: string;
   currentQuantity: number;
 };
@@ -45,6 +46,9 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
                 Description
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">
+                Location
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">
                 Unit
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-shelley-gray">
@@ -62,6 +66,7 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
                   {p.partNumber}
                 </td>
                 <td className="px-4 py-3 text-shelley-gray">{p.description ?? "—"}</td>
+                <td className="px-4 py-3 text-shelley-gray">{p.location ?? "—"}</td>
                 <td className="px-4 py-3 text-shelley-gray">{p.unit === "FEET" ? "ft" : "ea"}</td>
                 <td className="px-4 py-3 text-right font-medium">
                   {p.currentQuantity} {p.unit === "FEET" ? "ft" : "ea"}
