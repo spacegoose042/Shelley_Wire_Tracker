@@ -10,6 +10,7 @@ const updateSchema = z.object({
     .array(z.object({ partId: z.string().min(1), quantity: z.number().positive() }))
     .min(1)
     .optional(),
+  processed: z.boolean().optional(),
 });
 
 export async function GET(
@@ -46,6 +47,7 @@ export async function GET(
   return NextResponse.json({
     id: t.id,
     jobName: t.jobName,
+    processed: t.processed,
     createdAt: t.createdAt,
     user: t.user,
     lines: t.lines.map((l) => ({
@@ -80,13 +82,16 @@ export async function PATCH(
   if (!parsed.success)
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
 
+  const { jobName, lines: newLines, processed } = parsed.data;
+  const hasAny = jobName !== undefined || newLines !== undefined || processed !== undefined;
+  if (!hasAny)
+    return NextResponse.json({ error: "Provide jobName, lines, or processed" }, { status: 400 });
+
   const existing = await prisma.transaction.findUnique({
     where: { id },
     include: { lines: { include: { part: true } } },
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const { jobName, lines: newLines } = parsed.data;
 
   if (newLines !== undefined) {
     const partIds = Array.from(new Set(newLines.map((l) => l.partId)));
@@ -110,15 +115,14 @@ export async function PATCH(
     }
   }
 
-  await prisma.$transaction(async (tx) => {
-    for (const line of existing.lines) {
-      await tx.part.update({
-        where: { id: line.partId },
-        data: { currentQuantity: { increment: Number(line.quantity) } },
-      });
-    }
-
-    if (newLines !== undefined) {
+  if (newLines !== undefined) {
+    await prisma.$transaction(async (tx) => {
+      for (const line of existing.lines) {
+        await tx.part.update({
+          where: { id: line.partId },
+          data: { currentQuantity: { increment: Number(line.quantity) } },
+        });
+      }
       await tx.transactionLine.deleteMany({ where: { transactionId: id } });
       await tx.transactionLine.createMany({
         data: newLines.map((l) => ({
@@ -133,15 +137,21 @@ export async function PATCH(
           data: { currentQuantity: { decrement: line.quantity } },
         });
       }
+      const updateData: { jobName?: string; processed?: boolean } = {};
+      if (jobName !== undefined) updateData.jobName = jobName;
+      if (processed !== undefined) updateData.processed = processed;
+      if (Object.keys(updateData).length > 0) {
+        await tx.transaction.update({ where: { id }, data: updateData });
+      }
+    });
+  } else {
+    const updateData: { jobName?: string; processed?: boolean } = {};
+    if (jobName !== undefined) updateData.jobName = jobName;
+    if (processed !== undefined) updateData.processed = processed;
+    if (Object.keys(updateData).length > 0) {
+      await prisma.transaction.update({ where: { id }, data: updateData });
     }
-
-    if (jobName !== undefined) {
-      await tx.transaction.update({
-        where: { id },
-        data: { jobName },
-      });
-    }
-  });
+  }
 
   const updated = await prisma.transaction.findUnique({
     where: { id },
@@ -154,6 +164,7 @@ export async function PATCH(
   return NextResponse.json({
     id: updated!.id,
     jobName: updated!.jobName,
+    processed: updated!.processed,
     createdAt: updated!.createdAt,
     user: updated!.user,
     lines: updated!.lines.map((l) => ({

@@ -42,12 +42,13 @@ enum Unit {
 }
 
 model Transaction {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobName   String
-  createdAt DateTime @default(now())
-  lines     TransactionLine[]
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobName    String
+  processed  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  lines      TransactionLine[]
 }
 
 model TransactionLine {
