@@ -90,3 +90,6 @@ A simple web app for Shelley Electric (Wichita, Kansas) to track wire and parts 
 ## License
 
 Private – Shelley Electric.
+
+---
+*Small edit to test GitHub Desktop sync.*
