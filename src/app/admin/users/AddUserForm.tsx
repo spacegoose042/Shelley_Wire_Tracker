@@ -24,16 +24,23 @@ export function AddUserForm() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
         name: name.trim() || undefined,
         role,
       }),
     });
-    const data = await res.json().catch(() => ({}));
+    let data: { error?: string } = {};
+    try {
+      data = await res.json();
+    } catch {
+      setError(res.status === 403 ? "You don’t have permission to add users." : "Failed to add user.");
+      setLoading(false);
+      return;
+    }
     setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Failed to add user.");
+      setError(data.error ?? (res.status === 403 ? "You don’t have permission to add users." : "Failed to add user."));
       return;
     }
     setEmail("");
