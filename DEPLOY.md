@@ -64,13 +64,22 @@ Use your GitHub username/password or a **Personal Access Token** (recommended) w
    | `NEXTAUTH_SECRET`   | A long random string, e.g. run `openssl rand -base64 32` in a terminal and paste the result. |
    | `NEXTAUTH_URL`      | Your app URL. After first deploy: **Settings** → **Networking** → **Generate domain**, then use that URL (e.g. `https://shelley-wire-tracker-production.up.railway.app`). |
    | `AUTH_TRUST_HOST`  | Set to `true` on Railway so NextAuth trusts the proxy (required for login to work). |
+   | `SETUP_SECRET`     | A random string (e.g. run `openssl rand -hex 16`). Used once to create the admin user; see **Create admin user** below. |
 
-3. **Build & start (Railway usually detects Next.js):**
+3. **Create admin user (if database is connected but empty)**  
+   If you see "invalid email or password" and the database has no users:
+   - In Railway → **Web Service** → **Variables**, add **`SETUP_SECRET`** (e.g. run `openssl rand -hex 16` locally and paste the value).
+   - Redeploy so the new variable is set.
+   - In your browser, open: **`https://shelleywiretracker-production.up.railway.app/api/setup?secret=YOUR_SETUP_SECRET`** (use the same value you set).
+   - You should see `{"ok":true,"message":"Admin user created..."}`. Then sign in with **deb@shelleyelectric.com** / **DebIsHot*42**.
+   - You can remove `SETUP_SECRET` after setup or leave it.
+
+4. **Build & start (Railway usually detects Next.js):**
    - **Build Command:** `npm run build`
    - **Start Command:** `npm start`
    - **Root Directory:** leave blank unless the app is in a subfolder.
 
-4. Trigger a deploy: **Deployments** → **Redeploy**, or push a new commit to GitHub.
+5. Trigger a deploy: **Deployments** → **Redeploy**, or push a new commit to GitHub.
 
 ### Run database schema and seed (first time only)
 
@@ -116,6 +125,9 @@ The Web Service is using a local/default `DATABASE_URL`. It must use Railway’s
 
 **Auth error page shows localhost:3000 or redirects to localhost**  
 Set `NEXTAUTH_URL` on the **Web Service** to your real app URL, e.g. `https://shelleywiretracker-production.up.railway.app` (no trailing slash). Then redeploy.
+
+**"Invalid email or password" and database is empty**  
+No users exist yet. Use the **Create admin user** steps above: set `SETUP_SECRET`, then visit `/api/setup?secret=YOUR_SETUP_SECRET` once in your browser.
 
 ---
 
