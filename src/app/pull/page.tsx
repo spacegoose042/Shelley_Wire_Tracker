@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 
@@ -126,6 +127,14 @@ export default function PullPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link
+          href="/dashboard"
+          className="text-sm font-medium text-shelley-gray hover:text-shelley-blue"
+        >
+          ← Back to dashboard
+        </Link>
+      </div>
       <h1 className="text-2xl font-semibold text-shelley-blue">Record pull</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">

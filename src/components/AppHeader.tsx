@@ -15,6 +15,7 @@ export function AppHeader() {
   const nav = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/pull", label: "Record pull" },
+    { href: "/my-pulls", label: "My pulls" },
     ...(isAdmin ? [{ href: "/admin/parts", label: "Admin" }] : []),
   ];
 
