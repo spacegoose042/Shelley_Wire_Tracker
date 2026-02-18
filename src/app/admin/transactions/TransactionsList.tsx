@@ -182,7 +182,11 @@ export function TransactionsList() {
                     <select
                       value={t.processed ? "true" : "false"}
                       onChange={(e) => setProcessed(t.id, e.target.value === "true")}
-                      className="input-field text-sm"
+                      className={
+                        t.processed
+                          ? "input-field text-sm border-green-500 bg-green-50 text-green-800 font-medium"
+                          : "input-field text-sm"
+                      }
                       aria-label="Mark as processed or not"
                     >
                       <option value="false">Not processed</option>

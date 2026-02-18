@@ -10,6 +10,7 @@ const updateSchema = z.object({
   location: z.string().optional(),
   unit: z.enum(["FEET", "EACH"]).optional(),
   currentQuantity: z.number().min(0).optional(),
+  addQuantity: z.number().positive().optional(),
 });
 
 export async function GET(
@@ -63,12 +64,22 @@ export async function PATCH(
   if (existing && existing.id !== part.id)
     return NextResponse.json({ error: "Part number + location already in use" }, { status: 400 });
 
-  const updateData: { partNumber?: string; description?: string | null; location?: string; unit?: "FEET" | "EACH"; currentQuantity?: number } = {};
+  const updateData: {
+    partNumber?: string;
+    description?: string | null;
+    location?: string;
+    unit?: "FEET" | "EACH";
+    currentQuantity?: number | { increment: number };
+  } = {};
   if (data.partNumber !== undefined) updateData.partNumber = data.partNumber;
   if (data.description !== undefined) updateData.description = data.description;
   if (data.location !== undefined) updateData.location = data.location ?? "";
   if (data.unit) updateData.unit = data.unit;
-  if (typeof data.currentQuantity === "number") updateData.currentQuantity = data.currentQuantity;
+  if (typeof data.addQuantity === "number") {
+    updateData.currentQuantity = { increment: data.addQuantity };
+  } else if (typeof data.currentQuantity === "number") {
+    updateData.currentQuantity = data.currentQuantity;
+  }
 
   const updated = await prisma.part.update({
     where: { id },
