@@ -126,6 +126,9 @@ The Web Service is using a local/default `DATABASE_URL`. Fix it: open **Web Serv
 **Auth error page shows localhost:3000 or redirects to localhost**  
 Set `NEXTAUTH_URL` on the **Web Service** to your real app URL, e.g. `https://shelleywiretracker-production.up.railway.app` (no trailing slash). Then redeploy.
 
+**Deployment shows "Failed to launch" even though build succeeded**  
+The app now starts the Next.js server first so Railway’s health check gets a response quickly. If it still fails: in **Web Service** → **Settings** → **Health Check** (or **Deploy**), set the health check path to **`/api/health`** so Railway pings a simple 200 response instead of the root URL. Ensure **AUTH_TRUST_HOST** is set to **`true`** in Variables.
+
 **"Invalid email or password" and database is empty**  
 No users exist yet. Use the **Create admin user** steps above: set `SETUP_SECRET`, then visit `/api/setup?secret=YOUR_SETUP_SECRET` once in your browser.
 
