@@ -6,11 +6,16 @@ import { z } from "zod";
 
 const updateSchema = z.object({
   jobName: z.string().min(1).optional(),
+  processed: z.boolean().optional(),
+  // Final line state to store on the transaction record
   lines: z
     .array(z.object({ partId: z.string().min(1), quantity: z.number().positive() }))
     .min(1)
     .optional(),
-  processed: z.boolean().optional(),
+  // Explicit inventory movements: positive delta = add to stock, negative = remove from stock
+  inventoryAdjustments: z
+    .array(z.object({ partId: z.string().min(1), delta: z.number() }))
+    .optional(),
 });
 
 export async function GET(
@@ -82,47 +87,72 @@ export async function PATCH(
   if (!parsed.success)
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
 
-  const { jobName, lines: newLines, processed } = parsed.data;
-  const hasAny = jobName !== undefined || newLines !== undefined || processed !== undefined;
+  const { jobName, lines: newLines, processed, inventoryAdjustments } = parsed.data;
+  const hasAny =
+    jobName !== undefined ||
+    newLines !== undefined ||
+    processed !== undefined ||
+    inventoryAdjustments !== undefined;
   if (!hasAny)
-    return NextResponse.json({ error: "Provide jobName, lines, or processed" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Provide jobName, lines, processed, or inventoryAdjustments" },
+      { status: 400 }
+    );
 
-  const existing = await prisma.transaction.findUnique({
-    where: { id },
-    include: { lines: { include: { part: true } } },
-  });
+  const existing = await prisma.transaction.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (newLines !== undefined) {
-    const partIds = Array.from(new Set(newLines.map((l) => l.partId)));
-    const parts = await prisma.part.findMany({ where: { id: { in: partIds } } });
-    if (parts.length !== partIds.length)
-      return NextResponse.json({ error: "One or more parts not found" }, { status: 400 });
+  // Validate any negative inventory adjustments (pulling from stock)
+  if (inventoryAdjustments && inventoryAdjustments.length > 0) {
+    // Aggregate deltas by partId in case the same part appears more than once
+    const deltaMap = new Map<string, number>();
+    for (const adj of inventoryAdjustments) {
+      deltaMap.set(adj.partId, (deltaMap.get(adj.partId) ?? 0) + adj.delta);
+    }
 
-    for (const line of newLines) {
-      const part = parts.find((p) => p.id === line.partId)!;
-      const currentQty = Number(part.currentQuantity);
-      const oldLine = existing.lines.find((l) => l.partId === line.partId);
-      const oldQty = oldLine ? Number(oldLine.quantity) : 0;
-      const afterRestore = currentQty + oldQty;
-      if (afterRestore < line.quantity)
+    const partIds = Array.from(deltaMap.keys());
+    const parts = await prisma.part.findMany({ where: { id: { in: partIds } } });
+
+    for (const [partId, delta] of Array.from(deltaMap)) {
+      if (delta >= 0) continue; // returning to stock — always fine
+      const part = parts.find((p) => p.id === partId);
+      if (!part)
+        return NextResponse.json(
+          { error: `Part ${partId} not found` },
+          { status: 400 }
+        );
+      const available = Number(part.currentQuantity);
+      if (available + delta < 0)
         return NextResponse.json(
           {
-            error: `Insufficient quantity for ${part.partNumber}${part.location ? ` (${part.location})` : ""}. Available after reverting: ${afterRestore}`,
+            error: `Insufficient stock for ${part.partNumber}${part.location ? ` (${part.location})` : ""}. Available: ${available} ${part.unit === "FEET" ? "ft" : "ea"}, trying to pull: ${-delta}.`,
           },
           { status: 400 }
         );
     }
   }
 
-  if (newLines !== undefined) {
-    await prisma.$transaction(async (tx) => {
-      for (const line of existing.lines) {
+  // Validate new line parts exist
+  if (newLines) {
+    const partIds = Array.from(new Set(newLines.map((l) => l.partId)));
+    const parts = await prisma.part.findMany({ where: { id: { in: partIds } } });
+    if (parts.length !== partIds.length)
+      return NextResponse.json({ error: "One or more parts not found" }, { status: 400 });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Apply explicit inventory adjustments
+    if (inventoryAdjustments) {
+      for (const adj of inventoryAdjustments) {
         await tx.part.update({
-          where: { id: line.partId },
-          data: { currentQuantity: { increment: Number(line.quantity) } },
+          where: { id: adj.partId },
+          data: { currentQuantity: { increment: adj.delta } },
         });
       }
+    }
+
+    // Replace transaction lines
+    if (newLines) {
       await tx.transactionLine.deleteMany({ where: { transactionId: id } });
       await tx.transactionLine.createMany({
         data: newLines.map((l) => ({
@@ -131,27 +161,16 @@ export async function PATCH(
           quantity: l.quantity,
         })),
       });
-      for (const line of newLines) {
-        await tx.part.update({
-          where: { id: line.partId },
-          data: { currentQuantity: { decrement: line.quantity } },
-        });
-      }
-      const updateData: { jobName?: string; processed?: boolean } = {};
-      if (jobName !== undefined) updateData.jobName = jobName;
-      if (processed !== undefined) updateData.processed = processed;
-      if (Object.keys(updateData).length > 0) {
-        await tx.transaction.update({ where: { id }, data: updateData });
-      }
-    });
-  } else {
+    }
+
+    // Update metadata
     const updateData: { jobName?: string; processed?: boolean } = {};
     if (jobName !== undefined) updateData.jobName = jobName;
     if (processed !== undefined) updateData.processed = processed;
     if (Object.keys(updateData).length > 0) {
-      await prisma.transaction.update({ where: { id }, data: updateData });
+      await tx.transaction.update({ where: { id }, data: updateData });
     }
-  }
+  });
 
   const updated = await prisma.transaction.findUnique({
     where: { id },
