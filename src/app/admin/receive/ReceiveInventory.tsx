@@ -23,20 +23,21 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
   const [searching, setSearching] = useState(false);
   const [stage, setStage] = useState<Stage>({ type: "idle" });
 
-  useEffect(() => {
-    if (initialQuery.trim()) {
-      runSearch(initialQuery.trim());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Create-form state
+  const [createPartNumber, setCreatePartNumber] = useState("");
   const [createDesc, setCreateDesc] = useState("");
   const [createLocation, setCreateLocation] = useState("");
   const [createUnit, setCreateUnit] = useState<"FEET" | "EACH">("FEET");
   const [createQty, setCreateQty] = useState("");
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState("");
+
+  useEffect(() => {
+    if (initialQuery.trim()) {
+      runSearch(initialQuery.trim());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function runSearch(q: string) {
     setSearching(true);
@@ -75,17 +76,27 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       setStage({ ...stage, saving: false, error: data.error ?? "Failed to save." });
       return;
     }
-    setStage({
-      type: "done",
-      part: stage.part,
-      added: qty,
-      newTotal: data.currentQuantity,
-    });
+    setStage({ type: "done", part: stage.part, added: qty, newTotal: data.currentQuantity });
+  }
+
+  function openCreate(partNumber = "") {
+    setCreatePartNumber(partNumber);
+    setCreateDesc("");
+    setCreateLocation("");
+    setCreateUnit("FEET");
+    setCreateQty("");
+    setCreateError("");
+    setStage({ type: "create", partNumber });
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (stage.type !== "create") return;
+    const pn = createPartNumber.trim();
+    if (!pn) {
+      setCreateError("Part number is required.");
+      return;
+    }
     const qty = parseFloat(createQty) || 0;
     if (qty < 0) {
       setCreateError("Quantity must be 0 or greater.");
@@ -97,7 +108,7 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        partNumber: stage.partNumber,
+        partNumber: pn,
         description: createDesc.trim() || undefined,
         location: createLocation.trim() || undefined,
         unit: createUnit,
@@ -110,58 +121,78 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       setCreateError(data.error ?? "Failed to create part.");
       return;
     }
-    setStage({
-      type: "done",
-      part: data,
-      added: qty,
-      newTotal: data.currentQuantity,
-    });
+    setStage({ type: "done", part: data, added: qty, newTotal: data.currentQuantity });
   }
 
   function reset() {
     setQuery("");
     setStage({ type: "idle" });
-    setCreateDesc("");
-    setCreateLocation("");
-    setCreateUnit("FEET");
-    setCreateQty("");
-    setCreateError("");
   }
 
   return (
     <div className="max-w-2xl space-y-6">
-      {/* Search */}
-      <div className="card">
-        <h2 className="mb-4 font-medium text-shelley-blue">Step 1 — Find the part</h2>
-        <form onSubmit={handleSearch} className="flex gap-3">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Enter part number"
-            className="input-field flex-1"
-            autoFocus
-          />
-          <button type="submit" className="btn-primary whitespace-nowrap" disabled={searching}>
-            {searching ? "Searching…" : "Look up"}
-          </button>
-        </form>
-      </div>
 
-      {/* Results */}
+      {/* Two entry paths on idle — or show search bar at top when in results/receiving */}
+      {(stage.type === "idle" || stage.type === "results") && (
+        <div className="card space-y-5">
+          {/* Path A: existing part */}
+          <div>
+            <h2 className="mb-1 font-medium text-shelley-blue">Receive stock for an existing part</h2>
+            <p className="mb-3 text-sm text-shelley-gray">
+              Search by part number to find the record, then enter how much was received.
+            </p>
+            <form onSubmit={handleSearch} className="flex gap-3">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Part number"
+                className="input-field flex-1"
+                autoFocus={!initialQuery}
+              />
+              <button type="submit" className="btn-primary whitespace-nowrap" disabled={searching}>
+                {searching ? "Searching…" : "Look up"}
+              </button>
+            </form>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs font-medium text-shelley-gray">OR</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
+          {/* Path B: new part */}
+          <div>
+            <h2 className="mb-1 font-medium text-shelley-blue">Enter a new part into the system</h2>
+            <p className="mb-3 text-sm text-shelley-gray">
+              Part number not in the system yet? Add it here.
+            </p>
+            <button
+              type="button"
+              onClick={() => openCreate("")}
+              className="btn-secondary"
+            >
+              Create new part
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Search results */}
       {stage.type === "results" && (
         <div className="card space-y-4">
           {stage.parts.length > 0 ? (
             <>
               <h2 className="font-medium text-shelley-blue">
-                Step 2 — Select the part to receive into
+                Select the record to receive into
               </h2>
               <p className="text-sm text-shelley-gray">
-                {stage.parts.length} record{stage.parts.length !== 1 ? "s" : ""} found for &ldquo;{stage.query}&rdquo;
+                {stage.parts.length} record{stage.parts.length !== 1 ? "s" : ""} found matching &ldquo;{stage.query}&rdquo;
               </p>
               <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 overflow-hidden">
                 {stage.parts.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                  <div key={p.id} className="flex items-center justify-between gap-4 px-4 py-3 bg-white">
                     <div>
                       <p className="font-medium text-shelley-blue">
                         {p.partNumber}
@@ -189,30 +220,30 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
                 ))}
               </div>
               <p className="text-sm text-shelley-gray">
-                Don&apos;t see the right location?{" "}
+                Wrong location or a new stocking location for this part?{" "}
                 <button
                   type="button"
-                  className="text-shelley-blue hover:underline"
-                  onClick={() => setStage({ type: "create", partNumber: stage.query })}
+                  className="text-shelley-blue hover:underline font-medium"
+                  onClick={() => openCreate(stage.query)}
                 >
-                  Create a new record for &ldquo;{stage.query}&rdquo;
+                  Add &ldquo;{stage.query}&rdquo; at a new location
                 </button>
               </p>
             </>
           ) : (
-            <>
-              <h2 className="font-medium text-shelley-blue">Part not found</h2>
+            <div className="space-y-3">
+              <h2 className="font-medium text-shelley-blue">No match found</h2>
               <p className="text-sm text-shelley-gray">
-                No part matching &ldquo;{stage.query}&rdquo; exists in the system.
+                &ldquo;{stage.query}&rdquo; is not in the system yet.
               </p>
               <button
                 type="button"
-                onClick={() => setStage({ type: "create", partNumber: stage.query })}
+                onClick={() => openCreate(stage.query)}
                 className="btn-primary"
               >
                 Create &ldquo;{stage.query}&rdquo; as a new part
               </button>
-            </>
+            </div>
           )}
         </div>
       )}
@@ -220,7 +251,12 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       {/* Receive qty input */}
       {stage.type === "receiving" && (
         <div className="card space-y-4">
-          <h2 className="font-medium text-shelley-blue">Step 2 — Enter quantity received</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-medium text-shelley-blue">Enter quantity received</h2>
+            <button type="button" onClick={reset} className="text-sm text-shelley-gray hover:underline">
+              Start over
+            </button>
+          </div>
           <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
             <p className="font-medium text-shelley-blue">
               {stage.part.partNumber}
@@ -241,7 +277,7 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
           <div className="flex items-end gap-3">
             <div className="w-48">
               <label className="mb-1 block text-sm font-medium text-shelley-gray">
-                Quantity to add ({stage.part.unit === "FEET" ? "ft" : "ea"})
+                Quantity received ({stage.part.unit === "FEET" ? "ft" : "ea"})
               </label>
               <input
                 type="number"
@@ -262,9 +298,6 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
             >
               {stage.saving ? "Saving…" : "Add to inventory"}
             </button>
-            <button type="button" onClick={reset} className="btn-secondary">
-              Start over
-            </button>
           </div>
           {stage.error && <p className="text-sm text-shelley-red">{stage.error}</p>}
         </div>
@@ -273,32 +306,37 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       {/* Create new part form */}
       {stage.type === "create" && (
         <div className="card space-y-4">
-          <h2 className="font-medium text-shelley-blue">
-            Step 2 — Create new part record
-          </h2>
-          <p className="text-sm text-shelley-gray">
-            &ldquo;{stage.partNumber}&rdquo; is not in the system. Fill in the details below to add it.
-          </p>
+          <div className="flex items-center justify-between">
+            <h2 className="font-medium text-shelley-blue">Enter new part into system</h2>
+            <button type="button" onClick={reset} className="text-sm text-shelley-gray hover:underline">
+              Start over
+            </button>
+          </div>
           <form onSubmit={handleCreate} className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-shelley-gray">Part number</label>
-              <input
-                type="text"
-                value={stage.partNumber}
-                readOnly
-                className="input-field bg-gray-100 text-shelley-gray cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-shelley-gray">Description</label>
-              <input
-                type="text"
-                value={createDesc}
-                onChange={(e) => setCreateDesc(e.target.value)}
-                className="input-field"
-                placeholder="Optional"
-                autoFocus
-              />
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 min-w-[160px]">
+                <label className="mb-1 block text-sm font-medium text-shelley-gray">
+                  Part number <span className="text-shelley-red">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={createPartNumber}
+                  onChange={(e) => setCreatePartNumber(e.target.value)}
+                  className="input-field"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <label className="mb-1 block text-sm font-medium text-shelley-gray">Description</label>
+                <input
+                  type="text"
+                  value={createDesc}
+                  onChange={(e) => setCreateDesc(e.target.value)}
+                  className="input-field"
+                  placeholder="Optional"
+                />
+              </div>
             </div>
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 min-w-[160px]">
@@ -340,10 +378,10 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
             {createError && <p className="text-sm text-shelley-red">{createError}</p>}
             <div className="flex gap-3">
               <button type="submit" className="btn-primary" disabled={createSaving}>
-                {createSaving ? "Creating…" : "Create part & add inventory"}
+                {createSaving ? "Creating…" : "Save part"}
               </button>
               <button type="button" onClick={reset} className="btn-secondary">
-                Start over
+                Cancel
               </button>
             </div>
           </form>
@@ -354,18 +392,21 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       {stage.type === "done" && (
         <div className="card space-y-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-700 text-lg font-bold">✓</span>
-            <h2 className="font-medium text-green-800">Inventory updated</h2>
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-700 text-xl font-bold">✓</span>
+            <h2 className="font-medium text-green-800">Done</h2>
           </div>
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm">
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm space-y-0.5">
             <p className="font-medium text-shelley-blue">
               {stage.part.partNumber}
               {stage.part.location ? ` @ ${stage.part.location}` : ""}
             </p>
+            {stage.part.description && (
+              <p className="text-shelley-gray">{stage.part.description}</p>
+            )}
             <p className="text-shelley-gray">
               Added: {stage.added} {stage.part.unit === "FEET" ? "ft" : "ea"}
             </p>
-            <p className="text-shelley-gray">
+            <p className="font-medium text-shelley-gray">
               New on-hand total: {stage.newTotal} {stage.part.unit === "FEET" ? "ft" : "ea"}
             </p>
           </div>
@@ -377,7 +418,7 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
               type="button"
               onClick={() => {
                 setQuery(stage.part.partNumber);
-                setStage({ type: "idle" });
+                runSearch(stage.part.partNumber);
               }}
               className="btn-secondary"
             >
