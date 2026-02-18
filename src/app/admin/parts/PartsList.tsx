@@ -55,7 +55,7 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
                 On hand
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-shelley-gray">
-                Actions
+                Edit
               </th>
             </tr>
           </thead>
@@ -71,13 +71,7 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
                 <td className="px-4 py-3 text-right font-medium">
                   {p.currentQuantity} {p.unit === "FEET" ? "ft" : "ea"}
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-right space-x-3">
-                  <Link
-                    href={`/admin/receive?q=${encodeURIComponent(p.partNumber)}`}
-                    className="text-sm text-green-700 font-medium hover:underline"
-                  >
-                    Receive
-                  </Link>
+                <td className="whitespace-nowrap px-4 py-3 text-right">
                   <Link
                     href={`/admin/parts/${p.id}`}
                     className="text-sm text-shelley-blue hover:underline"

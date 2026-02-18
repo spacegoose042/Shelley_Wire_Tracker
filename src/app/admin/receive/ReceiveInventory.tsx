@@ -93,10 +93,11 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
     e.preventDefault();
     if (stage.type !== "create") return;
     const pn = createPartNumber.trim();
-    if (!pn) {
-      setCreateError("Part number is required.");
-      return;
-    }
+    const desc = createDesc.trim();
+    const loc = createLocation.trim();
+    if (!pn) { setCreateError("Part number is required."); return; }
+    if (!desc) { setCreateError("Description is required."); return; }
+    if (!loc) { setCreateError("Location is required."); return; }
     const qty = parseFloat(createQty) || 0;
     if (qty < 0) {
       setCreateError("Quantity must be 0 or greater.");
@@ -109,8 +110,8 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         partNumber: pn,
-        description: createDesc.trim() || undefined,
-        location: createLocation.trim() || undefined,
+        description: desc,
+        location: loc,
         unit: createUnit,
         currentQuantity: qty,
       }),
@@ -328,25 +329,31 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
                 />
               </div>
               <div className="flex-1 min-w-[200px]">
-                <label className="mb-1 block text-sm font-medium text-shelley-gray">Description</label>
+                <label className="mb-1 block text-sm font-medium text-shelley-gray">
+                  Description <span className="text-shelley-red">*</span>
+                </label>
                 <input
                   type="text"
                   value={createDesc}
                   onChange={(e) => setCreateDesc(e.target.value)}
                   className="input-field"
-                  placeholder="Optional"
+                  placeholder="e.g. 12 AWG THHN Wire"
+                  required
                 />
               </div>
             </div>
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 min-w-[160px]">
-                <label className="mb-1 block text-sm font-medium text-shelley-gray">Location</label>
+                <label className="mb-1 block text-sm font-medium text-shelley-gray">
+                  Location <span className="text-shelley-red">*</span>
+                </label>
                 <input
                   type="text"
                   value={createLocation}
                   onChange={(e) => setCreateLocation(e.target.value)}
                   className="input-field"
                   placeholder="e.g. Bay 1234"
+                  required
                 />
               </div>
               <div className="w-32">
