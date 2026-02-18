@@ -12,13 +12,19 @@ const createPartSchema = z.object({
   currentQuantity: z.number().min(0).default(0),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (session?.user?.role !== "ADMIN")
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const { searchParams } = new URL(request.url);
+  const q = searchParams.get("q")?.trim() ?? "";
+
   const parts = await prisma.part.findMany({
-    orderBy: { partNumber: "asc" },
+    where: q
+      ? { partNumber: { contains: q, mode: "insensitive" } }
+      : undefined,
+    orderBy: [{ partNumber: "asc" }, { location: "asc" }],
   });
 
   return NextResponse.json(
