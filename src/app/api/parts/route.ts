@@ -9,16 +9,22 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
+  const location = searchParams.get("location")?.trim() ?? "";
+
+  const where: {
+    location?: string;
+    OR?: { partNumber?: { contains: string; mode: "insensitive" }; description?: { contains: string; mode: "insensitive" } }[];
+  } = {};
+  if (location) where.location = location;
+  if (q) {
+    where.OR = [
+      { partNumber: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+    ];
+  }
 
   const parts = await prisma.part.findMany({
-    where: q
-      ? {
-          OR: [
-            { partNumber: { contains: q, mode: "insensitive" } },
-            { description: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
+    where: Object.keys(where).length > 0 ? where : undefined,
     orderBy: { partNumber: "asc" },
     take: 20,
     select: { id: true, partNumber: true, description: true, location: true, unit: true, currentQuantity: true },
