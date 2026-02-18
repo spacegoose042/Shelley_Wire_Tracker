@@ -7,7 +7,7 @@ type Transaction = {
   id: string;
   jobName: string;
   createdAt: string;
-  lines: { partNumber: string; description: string | null; unit: string; quantity: number }[];
+  lines: { partNumber: string; description: string | null; location: string; unit: string; quantity: number }[];
 };
 
 export default function MyPullsPage() {
@@ -74,7 +74,8 @@ export default function MyPullsPage() {
                       <ul className="list-inside list-disc space-y-0.5">
                         {t.lines.map((l, i) => (
                           <li key={i}>
-                            {l.partNumber} – {l.quantity} {l.unit === "FEET" ? "ft" : "ea"}
+                            {l.partNumber}
+                            {l.location ? ` (${l.location})` : ""} – {l.quantity} {l.unit === "FEET" ? "ft" : "ea"}
                           </li>
                         ))}
                       </ul>

@@ -9,7 +9,7 @@ type Transaction = {
   processed: boolean;
   createdAt: string;
   user: { id: string; email: string; name: string | null };
-  lines: { partNumber: string; description: string | null; unit: string; quantity: number }[];
+  lines: { partNumber: string; description: string | null; location: string; unit: string; quantity: number }[];
 };
 
 type UserOption = { id: string; email: string; name: string | null };
@@ -172,7 +172,8 @@ export function TransactionsList() {
                     <ul className="list-inside list-disc space-y-0.5">
                       {t.lines.map((l, i) => (
                         <li key={i}>
-                          {l.partNumber} – {l.quantity} {l.unit === "FEET" ? "ft" : "ea"}
+                          {l.partNumber}
+                          {l.location ? ` (${l.location})` : ""} – {l.quantity} {l.unit === "FEET" ? "ft" : "ea"}
                         </li>
                       ))}
                     </ul>

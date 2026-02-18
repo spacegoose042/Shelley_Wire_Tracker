@@ -18,6 +18,7 @@ type Line = {
   partId: string;
   partNumber: string;
   description: string | null;
+  location: string;
   unit: string;
   quantity: string;
   currentQuantity: number;
@@ -27,7 +28,7 @@ export default function PullPage() {
   const router = useRouter();
   const [jobName, setJobName] = useState("");
   const [lines, setLines] = useState<Line[]>([
-    { partId: "", partNumber: "", description: null, unit: "FEET", quantity: "", currentQuantity: 0 },
+    { partId: "", partNumber: "", description: null, location: "", unit: "FEET", quantity: "", currentQuantity: 0 },
   ]);
   const [partSearch, setPartSearch] = useState<PartOption[]>([]);
   const [searchValue, setSearchValue] = useState("");
@@ -55,6 +56,7 @@ export default function PullPage() {
         partId: part.id,
         partNumber: part.partNumber,
         description: part.description,
+        location: part.location ?? "",
         unit: part.unit,
         currentQuantity: part.currentQuantity,
         quantity: next[index].quantity || "",
@@ -84,7 +86,7 @@ export default function PullPage() {
   const addLine = () => {
     setLines((prev) => [
       ...prev,
-      { partId: "", partNumber: "", description: null, unit: "FEET", quantity: "", currentQuantity: 0 },
+      { partId: "", partNumber: "", description: null, location: "", unit: "FEET", quantity: "", currentQuantity: 0 },
     ]);
   };
 
@@ -170,6 +172,11 @@ export default function PullPage() {
               <div className="relative flex-1 min-w-[180px]">
                 <label className="mb-1 block text-xs font-medium text-shelley-gray">
                   Part number
+                  {line.location ? (
+                    <span className="ml-1 font-normal text-shelley-gray">
+                      (from {line.location})
+                    </span>
+                  ) : null}
                 </label>
                 <div className="flex gap-2">
                   <input

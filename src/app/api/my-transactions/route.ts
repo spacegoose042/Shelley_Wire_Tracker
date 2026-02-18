@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       skip: offset,
       orderBy: { createdAt: "desc" },
       include: {
-        lines: { include: { part: { select: { partNumber: true, description: true, unit: true } } } },
+        lines: { include: { part: { select: { partNumber: true, description: true, location: true, unit: true } } } },
       },
     }),
     prisma.transaction.count({ where: { userId: session.user.id } }),
@@ -32,6 +32,7 @@ export async function GET(request: Request) {
       lines: t.lines.map((l) => ({
         partNumber: l.part.partNumber,
         description: l.part.description,
+        location: l.part.location,
         unit: l.part.unit,
         quantity: Number(l.quantity),
       })),
