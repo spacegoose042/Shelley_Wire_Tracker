@@ -11,6 +11,7 @@ const updateSchema = z.object({
   unit: z.enum(["FEET", "EACH"]).optional(),
   currentQuantity: z.number().min(0).optional(),
   addQuantity: z.number().positive().optional(),
+  notes: z.string().optional(),
 });
 
 export async function GET(
@@ -76,8 +77,25 @@ export async function PATCH(
   if (data.location !== undefined) updateData.location = data.location ?? "";
   if (data.unit) updateData.unit = data.unit;
   if (typeof data.addQuantity === "number") {
-    updateData.currentQuantity = { increment: data.addQuantity };
-  } else if (typeof data.currentQuantity === "number") {
+    // Receiving stock: increment qty and write audit receipt atomically
+    const [updated] = await prisma.$transaction([
+      prisma.part.update({
+        where: { id },
+        data: { ...updateData, currentQuantity: { increment: data.addQuantity } },
+      }),
+      prisma.inventoryReceipt.create({
+        data: {
+          partId: id,
+          quantity: data.addQuantity,
+          notes: data.notes?.trim() || null,
+          userId: session.user.id ?? null,
+        },
+      }),
+    ]);
+    return NextResponse.json({ ...updated, currentQuantity: Number(updated.currentQuantity) });
+  }
+
+  if (typeof data.currentQuantity === "number") {
     updateData.currentQuantity = data.currentQuantity;
   }
 

@@ -14,7 +14,7 @@ type Part = {
 type Stage =
   | { type: "idle" }
   | { type: "results"; query: string; parts: Part[] }
-  | { type: "receiving"; part: Part; qty: string; saving: boolean; error: string }
+  | { type: "receiving"; part: Part; qty: string; notes: string; saving: boolean; error: string }
   | { type: "done"; part: Part; added: number; newTotal: number }
   // Brand-new part number — all fields editable
   | { type: "create-new" }
@@ -56,7 +56,7 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
   }
 
   function startReceive(part: Part) {
-    setStage({ type: "receiving", part, qty: "", saving: false, error: "" });
+    setStage({ type: "receiving", part, qty: "", notes: "", saving: false, error: "" });
   }
 
   async function submitReceive() {
@@ -70,7 +70,7 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
     const res = await fetch(`/api/parts/${stage.part.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ addQuantity: qty }),
+      body: JSON.stringify({ addQuantity: qty, notes: stage.notes || undefined }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -288,7 +288,7 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
               Current on hand: {stage.part.currentQuantity} {stage.part.unit === "FEET" ? "ft" : "ea"}
             </p>
           </div>
-          <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <div className="w-48">
               <label className="mb-1 block text-sm font-medium text-shelley-gray">
                 Quantity received ({stage.part.unit === "FEET" ? "ft" : "ea"})
@@ -304,6 +304,20 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
                 onKeyDown={(e) => { if (e.key === "Enter") submitReceive(); }}
               />
             </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="mb-1 block text-sm font-medium text-shelley-gray">
+                Notes <span className="font-normal">(optional — PO #, vendor, etc.)</span>
+              </label>
+              <input
+                type="text"
+                value={stage.notes}
+                onChange={(e) => setStage({ ...stage, notes: e.target.value })}
+                className="input-field"
+                placeholder="e.g. PO-1234 from ABC Supply"
+              />
+            </div>
+          </div>
+          <div>
             <button type="button" onClick={submitReceive} disabled={stage.saving} className="btn-primary">
               {stage.saving ? "Saving…" : "Add to inventory"}
             </button>

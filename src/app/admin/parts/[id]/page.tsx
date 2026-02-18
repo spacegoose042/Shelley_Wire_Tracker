@@ -3,6 +3,8 @@ import { redirect, notFound } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { EditPartForm } from "./EditPartForm";
+import { ReceiptHistory } from "./ReceiptHistory";
+import Link from "next/link";
 
 export default async function AdminPartEditPage({
   params,
@@ -19,8 +21,14 @@ export default async function AdminPartEditPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-shelley-blue">Edit part</h1>
-        <p className="mt-1 text-shelley-gray">{part.partNumber}</p>
+        <Link href="/admin/parts" className="text-sm font-medium text-shelley-gray hover:text-shelley-blue">
+          ← Back to parts
+        </Link>
+        <h1 className="mt-2 text-2xl font-semibold text-shelley-blue">Edit part</h1>
+        <p className="mt-1 text-shelley-gray">
+          {part.partNumber}
+          {part.location ? <span className="ml-2 text-shelley-gray">@ {part.location}</span> : null}
+        </p>
       </div>
       <EditPartForm
         id={part.id}
@@ -30,6 +38,7 @@ export default async function AdminPartEditPage({
         unit={part.unit}
         currentQuantity={Number(part.currentQuantity)}
       />
+      <ReceiptHistory partId={part.id} unit={part.unit} />
     </div>
   );
 }
