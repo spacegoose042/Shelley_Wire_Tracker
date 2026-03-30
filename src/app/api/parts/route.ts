@@ -11,10 +11,7 @@ export async function GET(request: Request) {
   const q = searchParams.get("q")?.trim() ?? "";
   const location = searchParams.get("location")?.trim() ?? "";
 
-  const where: {
-    location?: string;
-    OR?: { partNumber?: { contains: string; mode: "insensitive" }; description?: { contains: string; mode: "insensitive" } }[];
-  } = {};
+  const where: Record<string, unknown> = { archived: false };
   if (location) where.location = location;
   if (q) {
     where.OR = [
@@ -24,7 +21,7 @@ export async function GET(request: Request) {
   }
 
   const parts = await prisma.part.findMany({
-    where: Object.keys(where).length > 0 ? where : undefined,
+    where,
     orderBy: { partNumber: "asc" },
     take: 20,
     select: { id: true, partNumber: true, description: true, location: true, unit: true, currentQuantity: true },

@@ -37,6 +37,8 @@ export default async function AdminPartEditPage({
         location={part.location ?? ""}
         unit={part.unit}
         currentQuantity={Number(part.currentQuantity)}
+        archived={part.archived}
+        archivedAt={part.archivedAt?.toISOString() ?? null}
       />
       <ReceiptHistory partId={part.id} unit={part.unit} />
     </div>

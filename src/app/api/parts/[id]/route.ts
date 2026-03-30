@@ -12,6 +12,7 @@ const updateSchema = z.object({
   currentQuantity: z.number().min(0).optional(),
   addQuantity: z.number().positive().optional(),
   notes: z.string().optional(),
+  archived: z.boolean().optional(),
 });
 
 export async function GET(
@@ -65,17 +66,31 @@ export async function PATCH(
   if (existing && existing.id !== part.id)
     return NextResponse.json({ error: "Part number + location already in use" }, { status: 400 });
 
+  // Block receiving into an archived part
+  if (typeof data.addQuantity === "number" && part.archived) {
+    return NextResponse.json(
+      { error: `${part.partNumber}${part.location ? ` (${part.location})` : ""} is archived. Unarchive it before receiving inventory.` },
+      { status: 400 }
+    );
+  }
+
   const updateData: {
     partNumber?: string;
     description?: string | null;
     location?: string;
     unit?: "FEET" | "EACH";
     currentQuantity?: number | { increment: number };
+    archived?: boolean;
+    archivedAt?: Date | null;
   } = {};
   if (data.partNumber !== undefined) updateData.partNumber = data.partNumber;
   if (data.description !== undefined) updateData.description = data.description;
   if (data.location !== undefined) updateData.location = data.location ?? "";
   if (data.unit) updateData.unit = data.unit;
+  if (data.archived !== undefined) {
+    updateData.archived = data.archived;
+    updateData.archivedAt = data.archived ? new Date() : null;
+  }
   if (typeof data.addQuantity === "number") {
     // Receiving stock: increment qty and write audit receipt atomically
     const [updated] = await prisma.$transaction([

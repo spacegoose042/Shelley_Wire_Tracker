@@ -19,11 +19,14 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
+  const includeArchived = searchParams.get("includeArchived") === "true";
+
+  const where: Record<string, unknown> = {};
+  if (!includeArchived) where.archived = false;
+  if (q) where.partNumber = { contains: q, mode: "insensitive" };
 
   const parts = await prisma.part.findMany({
-    where: q
-      ? { partNumber: { contains: q, mode: "insensitive" } }
-      : undefined,
+    where: Object.keys(where).length > 0 ? where : undefined,
     orderBy: [{ partNumber: "asc" }, { location: "asc" }],
   });
 
