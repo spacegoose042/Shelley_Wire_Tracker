@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ReceiptLabelButton } from "@/components/ReceiptLabelButton";
 
 type Part = {
   id: string;
@@ -540,6 +541,15 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
             </p>
           </div>
           <div className="flex gap-3">
+            {stage.added > 0 && stage.jobWorkOrderNumber && (
+              <ReceiptLabelButton
+                partNumber={stage.part.partNumber}
+                jobWorkOrderNumber={stage.jobWorkOrderNumber}
+                quantity={stage.added}
+                unit={stage.part.unit}
+                className="btn-secondary no-underline hover:no-underline"
+              />
+            )}
             <button type="button" onClick={reset} className="btn-primary">Receive another part</button>
             <button
               type="button"

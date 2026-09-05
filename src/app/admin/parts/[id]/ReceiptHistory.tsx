@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { ReceiptLabelButton } from "@/components/ReceiptLabelButton";
 
 type Receipt = {
   id: string;
@@ -36,7 +37,15 @@ function JobWorkOrderHistory({ jobs }: { jobs: Receipt["jobWorkOrders"] }) {
   );
 }
 
-export function ReceiptHistory({ partId, unit }: { partId: string; unit: string }) {
+export function ReceiptHistory({
+  partId,
+  partNumber,
+  unit,
+}: {
+  partId: string;
+  partNumber: string;
+  unit: string;
+}) {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -138,7 +147,7 @@ export function ReceiptHistory({ partId, unit }: { partId: string; unit: string 
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase text-shelley-gray">Job/WO history</th>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase text-shelley-gray">Received by</th>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase text-shelley-gray">Notes</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-shelley-gray">Edit</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-shelley-gray">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
@@ -274,12 +283,20 @@ export function ReceiptHistory({ partId, unit }: { partId: string; unit: string 
                     <td className="px-3 py-2 text-shelley-gray">{r.receivedBy ?? "—"}</td>
                     <td className="px-3 py-2 text-shelley-gray">{r.notes ?? "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">
-                      <button
-                        onClick={() => startEdit(r)}
-                        className="text-sm text-shelley-blue hover:underline"
-                      >
-                        Edit
-                      </button>
+                      <div className="flex items-center justify-end gap-3">
+                        <ReceiptLabelButton
+                          partNumber={partNumber}
+                          jobWorkOrderNumber={r.jobWorkOrders[r.jobWorkOrders.length - 1]?.number}
+                          quantity={r.quantity}
+                          unit={unit}
+                        />
+                        <button
+                          onClick={() => startEdit(r)}
+                          className="text-sm text-shelley-blue hover:underline"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

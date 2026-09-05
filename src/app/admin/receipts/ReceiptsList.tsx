@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { ReceiptLabelButton } from "@/components/ReceiptLabelButton";
 
 type Receipt = {
   id: string;
@@ -274,7 +275,7 @@ export function ReceiptsList() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">Job/WO history</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">Received by</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">Notes</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-shelley-gray">Edit</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-shelley-gray">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -420,12 +421,20 @@ export function ReceiptsList() {
                       <td className="px-4 py-3 text-sm text-shelley-gray">{r.receivedBy ?? "—"}</td>
                       <td className="px-4 py-3 text-sm text-shelley-gray">{r.notes || "—"}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <button
-                          onClick={() => startEdit(r)}
-                          className="text-sm text-shelley-blue hover:underline"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex items-center justify-end gap-3">
+                          <ReceiptLabelButton
+                            partNumber={r.partNumber}
+                            jobWorkOrderNumber={r.jobWorkOrders[r.jobWorkOrders.length - 1]?.number}
+                            quantity={r.quantity}
+                            unit={r.unit}
+                          />
+                          <button
+                            onClick={() => startEdit(r)}
+                            className="text-sm text-shelley-blue hover:underline"
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

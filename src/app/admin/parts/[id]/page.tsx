@@ -40,7 +40,7 @@ export default async function AdminPartEditPage({
         archived={part.archived}
         archivedAt={part.archivedAt?.toISOString() ?? null}
       />
-      <ReceiptHistory partId={part.id} unit={part.unit} />
+      <ReceiptHistory partId={part.id} partNumber={part.partNumber} unit={part.unit} />
     </div>
   );
 }

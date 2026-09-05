@@ -19,14 +19,15 @@
     "@auth/prisma-adapter": "^2.7.4",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
+    "bwip-js": "^4.11.4",
+    "html5-qrcode": "^2.3.8",
     "next": "14.2.35",
     "next-auth": "^4.24.10",
+    "prisma": "^5.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "html5-qrcode": "^2.3.8",
-    "zod": "^3.23.8",
-    "prisma": "^5.22.0",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
