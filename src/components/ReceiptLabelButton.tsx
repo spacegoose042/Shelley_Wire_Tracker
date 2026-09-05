@@ -13,7 +13,10 @@ type LabelDimensions = {
   logoHeight: number;
   partSize: number;
   detailSize: number;
-  matrixSize: number;
+  captionSize: number;
+  codeSize: number;
+  // The 1x2 label is too short to stack both codes, so they sit side by side.
+  codeLayout: "row" | "column";
 };
 
 const LABEL_SIZES: LabelDimensions[] = [
@@ -22,33 +25,39 @@ const LABEL_SIZES: LabelDimensions[] = [
     label: "1 × 2 in",
     width: 2,
     height: 1,
-    padding: 0.08,
-    logoHeight: 0.16,
-    partSize: 13,
-    detailSize: 8,
-    matrixSize: 0.68,
+    padding: 0.07,
+    logoHeight: 0.15,
+    partSize: 12,
+    detailSize: 7.5,
+    captionSize: 4.5,
+    codeSize: 0.4,
+    codeLayout: "row",
   },
   {
     name: "2x3",
     label: "2 × 3 in",
     width: 3,
     height: 2,
-    padding: 0.14,
-    logoHeight: 0.28,
-    partSize: 22,
-    detailSize: 13,
-    matrixSize: 1.25,
+    padding: 0.13,
+    logoHeight: 0.26,
+    partSize: 20,
+    detailSize: 12,
+    captionSize: 7,
+    codeSize: 0.68,
+    codeLayout: "column",
   },
   {
     name: "3x5",
     label: "3 × 5 in",
     width: 5,
     height: 3,
-    padding: 0.2,
-    logoHeight: 0.42,
-    partSize: 34,
-    detailSize: 19,
-    matrixSize: 1.85,
+    padding: 0.18,
+    logoHeight: 0.4,
+    partSize: 30,
+    detailSize: 17,
+    captionSize: 9,
+    codeSize: 1.05,
+    codeLayout: "column",
   },
 ];
 
@@ -76,10 +85,6 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function matrixText(partNumber: string, jobWorkOrderNumber: string) {
-  return `PART=${partNumber}\nJOB/WO=${jobWorkOrderNumber}`;
-}
-
 export function ReceiptLabelButton({
   partNumber,
   jobWorkOrderNumber,
@@ -100,12 +105,19 @@ export function ReceiptLabelButton({
   const [selectedJob, setSelectedJob] = useState(options[0]?.number ?? "");
   const [error, setError] = useState("");
   const [generating, setGenerating] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const partCanvasRef = useRef<HTMLCanvasElement>(null);
+  const jobCanvasRef = useRef<HTMLCanvasElement>(null);
   const size = LABEL_SIZES.find((option) => option.name === sizeName)!;
   const unitLabel = unit === "FEET" ? "ft" : "ea";
   const selected = options.find((job) => job.number === selectedJob) ?? options[0];
   const activeJob = selected?.number;
   const activeQty = selected?.quantity;
+
+  // Preview is drawn at real proportions so it matches the printed label.
+  const previewWidth = Math.min(size.width * 130, 620);
+  const ppi = previewWidth / size.width;
+  const pt = (value: number) => (value / 72) * ppi;
+  const gap = Math.max(size.padding * 0.7, 0.05);
 
   useEffect(() => {
     if (!open) return;
@@ -115,24 +127,31 @@ export function ReceiptLabelButton({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !activeJob || !canvasRef.current) return;
+    if (!open || !activeJob) return;
     let cancelled = false;
     setGenerating(true);
 
     import("bwip-js/browser")
       .then(({ default: bwipjs }) => {
-        if (cancelled || !canvasRef.current) return;
-        bwipjs.toCanvas(canvasRef.current, {
-          bcid: "datamatrix",
-          text: matrixText(partNumber, activeJob),
-          scale: 4,
-          paddingwidth: 0,
-          paddingheight: 0,
-        });
+        if (cancelled || !partCanvasRef.current || !jobCanvasRef.current) return;
+        // Each code carries only its own value so a scan fills a single field.
+        const codes: [HTMLCanvasElement, string][] = [
+          [partCanvasRef.current, partNumber],
+          [jobCanvasRef.current, activeJob],
+        ];
+        for (const [canvas, text] of codes) {
+          bwipjs.toCanvas(canvas, {
+            bcid: "datamatrix",
+            text,
+            scale: 4,
+            paddingwidth: 0,
+            paddingheight: 0,
+          });
+        }
         setError("");
       })
       .catch(() => {
-        if (!cancelled) setError("Could not generate the Data Matrix.");
+        if (!cancelled) setError("Could not generate the Data Matrix codes.");
       })
       .finally(() => {
         if (!cancelled) setGenerating(false);
@@ -144,7 +163,8 @@ export function ReceiptLabelButton({
   }, [open, partNumber, activeJob, sizeName]);
 
   function printLabel() {
-    if (!activeJob || activeQty == null || !canvasRef.current) return;
+    if (!activeJob || activeQty == null) return;
+    if (!partCanvasRef.current || !jobCanvasRef.current) return;
 
     const printWindow = window.open("", "_blank", "popup,width=900,height=700");
     if (!printWindow) {
@@ -152,7 +172,8 @@ export function ReceiptLabelButton({
       return;
     }
 
-    const matrixDataUrl = canvasRef.current.toDataURL("image/png");
+    const partMatrix = partCanvasRef.current.toDataURL("image/png");
+    const jobMatrix = jobCanvasRef.current.toDataURL("image/png");
     const logoUrl = `${window.location.origin}/logo.png`;
     const safePart = escapeHtml(partNumber);
     const safeJob = escapeHtml(activeJob);
@@ -181,8 +202,8 @@ export function ReceiptLabelButton({
       height: 100%;
       padding: ${size.padding}in;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) ${size.matrixSize}in;
-      gap: ${Math.max(size.padding * 0.75, 0.06)}in;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: ${gap}in;
       overflow: hidden;
     }
     .information {
@@ -202,7 +223,7 @@ export function ReceiptLabelButton({
     }
     .field-label {
       margin: 0 0 0.01in;
-      font-size: ${Math.max(size.detailSize * 0.55, 5)}pt;
+      font-size: ${size.captionSize}pt;
       font-weight: 700;
       letter-spacing: 0.08em;
       line-height: 1;
@@ -229,15 +250,32 @@ export function ReceiptLabelButton({
       overflow-wrap: anywhere;
     }
     .quantity { flex: 0 0 auto; text-align: right; }
-    .matrix-wrap {
+    .codes {
       display: flex;
+      flex-direction: ${size.codeLayout};
       align-items: center;
       justify-content: center;
+      gap: ${gap}in;
+    }
+    .code {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .code-caption {
+      margin: 0 0 0.02in;
+      font-size: ${size.captionSize}pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
     .matrix {
       display: block;
-      width: ${size.matrixSize}in;
-      height: ${size.matrixSize}in;
+      width: ${size.codeSize}in;
+      height: ${size.codeSize}in;
       image-rendering: pixelated;
     }
     @media screen {
@@ -264,8 +302,15 @@ export function ReceiptLabelButton({
         </div>
       </div>
     </section>
-    <aside class="matrix-wrap">
-      <img class="matrix" src="${matrixDataUrl}" alt="Part and Job/WO Data Matrix" />
+    <aside class="codes">
+      <figure class="code">
+        <figcaption class="code-caption">Scan part</figcaption>
+        <img class="matrix" src="${partMatrix}" alt="Part number Data Matrix" />
+      </figure>
+      <figure class="code">
+        <figcaption class="code-caption">Scan job/WO</figcaption>
+        <img class="matrix" src="${jobMatrix}" alt="Job/WO Data Matrix" />
+      </figure>
     </aside>
   </main>
 </body>
@@ -378,12 +423,13 @@ export function ReceiptLabelButton({
 
             <div className="mt-5 rounded-lg bg-gray-100 p-4">
               <div
-                className="mx-auto grid overflow-hidden bg-white p-3 shadow-md"
+                className="mx-auto grid overflow-hidden bg-white text-black shadow-md"
                 style={{
-                  aspectRatio: `${size.width} / ${size.height}`,
-                  maxWidth: `${Math.min(size.width * 120, 600)}px`,
-                  gridTemplateColumns: "minmax(0, 1fr) 32%",
-                  gap: "3%",
+                  width: `${previewWidth}px`,
+                  height: `${size.height * ppi}px`,
+                  padding: `${size.padding * ppi}px`,
+                  gridTemplateColumns: "minmax(0, 1fr) auto",
+                  gap: `${gap * ppi}px`,
                 }}
               >
                 <div className="flex min-w-0 flex-col justify-between">
@@ -392,31 +438,87 @@ export function ReceiptLabelButton({
                   <img
                     src="/logo.png"
                     alt="Shelley Electric"
-                    className="h-[16%] max-h-12 w-auto max-w-full object-contain object-left grayscale contrast-200"
+                    className="w-auto max-w-full object-contain object-left grayscale contrast-200"
+                    style={{ height: `${size.logoHeight * ppi}px` }}
                   />
                   <div>
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-black">Part number</p>
-                    <p className="break-all text-[clamp(12px,3vw,28px)] font-extrabold leading-none text-black">
+                    <p
+                      className="font-bold uppercase leading-none tracking-wider"
+                      style={{ fontSize: `${pt(size.captionSize)}px` }}
+                    >
+                      Part number
+                    </p>
+                    <p
+                      className="font-extrabold [overflow-wrap:anywhere]"
+                      style={{ fontSize: `${pt(size.partSize)}px`, lineHeight: 0.95 }}
+                    >
                       {partNumber}
                     </p>
                   </div>
                   <div className="flex items-end justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-[8px] font-bold uppercase tracking-wider text-black">Job / WO</p>
-                      <p className="break-all text-[clamp(10px,2vw,18px)] font-bold leading-none text-black">
+                      <p
+                        className="font-bold uppercase leading-none tracking-wider"
+                        style={{ fontSize: `${pt(size.captionSize)}px` }}
+                      >
+                        Job / WO
+                      </p>
+                      <p
+                        className="font-bold leading-none [overflow-wrap:anywhere]"
+                        style={{ fontSize: `${pt(size.detailSize)}px` }}
+                      >
                         {activeJob}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-[8px] font-bold uppercase tracking-wider text-black">{quantityCaption}</p>
-                      <p className="text-[clamp(10px,2vw,18px)] font-bold leading-none text-black">
+                      <p
+                        className="font-bold uppercase leading-none tracking-wider"
+                        style={{ fontSize: `${pt(size.captionSize)}px` }}
+                      >
+                        {quantityCaption}
+                      </p>
+                      <p
+                        className="font-bold leading-none"
+                        style={{ fontSize: `${pt(size.detailSize)}px` }}
+                      >
                         {activeQty} {unitLabel}
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-center">
-                  <canvas ref={canvasRef} className="h-auto max-h-full w-full object-contain [image-rendering:pixelated]" />
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    flexDirection: size.codeLayout === "row" ? "row" : "column",
+                    gap: `${gap * ppi}px`,
+                  }}
+                >
+                  <figure className="m-0 flex flex-col items-center">
+                    <figcaption
+                      className="whitespace-nowrap font-bold uppercase leading-none tracking-wider"
+                      style={{ fontSize: `${pt(size.captionSize)}px`, marginBottom: `${0.02 * ppi}px` }}
+                    >
+                      Scan part
+                    </figcaption>
+                    <canvas
+                      ref={partCanvasRef}
+                      className="block [image-rendering:pixelated]"
+                      style={{ width: `${size.codeSize * ppi}px`, height: `${size.codeSize * ppi}px` }}
+                    />
+                  </figure>
+                  <figure className="m-0 flex flex-col items-center">
+                    <figcaption
+                      className="whitespace-nowrap font-bold uppercase leading-none tracking-wider"
+                      style={{ fontSize: `${pt(size.captionSize)}px`, marginBottom: `${0.02 * ppi}px` }}
+                    >
+                      Scan job/WO
+                    </figcaption>
+                    <canvas
+                      ref={jobCanvasRef}
+                      className="block [image-rendering:pixelated]"
+                      style={{ width: `${size.codeSize * ppi}px`, height: `${size.codeSize * ppi}px` }}
+                    />
+                  </figure>
                 </div>
               </div>
             </div>
@@ -433,7 +535,7 @@ export function ReceiptLabelButton({
                 disabled={generating || Boolean(error)}
                 className="btn-primary"
               >
-                {generating ? "Preparing Data Matrix…" : `Print ${size.label} label`}
+                {generating ? "Preparing codes…" : `Print ${size.label} label`}
               </button>
             </div>
           </div>
