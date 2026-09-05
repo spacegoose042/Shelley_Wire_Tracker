@@ -1,11 +1,11 @@
 import { AdminNav } from "@/components/AdminNav";
-import { QmsHub } from "./QmsInteractive";
+import { IntakeQuestionnaire } from "../QmsTools";
 
-export default function QmsPage() {
+export default function QmsIntakePage() {
   return (
     <div className="space-y-6">
       <AdminNav />
-      <QmsHub />
+      <IntakeQuestionnaire />
     </div>
   );
 }

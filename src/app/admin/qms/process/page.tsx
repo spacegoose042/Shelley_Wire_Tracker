@@ -1,11 +1,11 @@
 import { AdminNav } from "@/components/AdminNav";
-import { QmsHub } from "./QmsInteractive";
+import { ProcessMap } from "../QmsInteractive";
 
-export default function QmsPage() {
+export default function QmsProcessPage() {
   return (
     <div className="space-y-6">
       <AdminNav />
-      <QmsHub />
+      <ProcessMap />
     </div>
   );
 }
