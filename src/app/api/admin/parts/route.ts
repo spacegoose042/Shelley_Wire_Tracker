@@ -42,6 +42,7 @@ export async function GET(request: Request) {
       receipts: {
         orderBy: { createdAt: "desc" },
         select: {
+          quantity: true,
           jobWorkOrders: {
             orderBy: { createdAt: "desc" },
             select: { number: true },
@@ -52,13 +53,24 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json(
-    parts.map(({ receipts, ...p }) => ({
-      ...p,
-      currentQuantity: Number(p.currentQuantity),
-      jobWorkOrders: Array.from(
-        new Set(receipts.flatMap((r) => r.jobWorkOrders.map((j) => j.number)))
-      ),
-    }))
+    parts.map(({ receipts, ...p }) => {
+      const labelJobs: { number: string; quantity: number }[] = [];
+      const seen = new Set<string>();
+      for (const receipt of receipts) {
+        const qty = Number(receipt.quantity);
+        for (const job of receipt.jobWorkOrders) {
+          if (seen.has(job.number)) continue;
+          seen.add(job.number);
+          labelJobs.push({ number: job.number, quantity: qty });
+        }
+      }
+      return {
+        ...p,
+        currentQuantity: Number(p.currentQuantity),
+        jobWorkOrders: labelJobs.map((job) => job.number),
+        labelJobs,
+      };
+    })
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ReceiptLabelButton } from "@/components/ReceiptLabelButton";
 
 type Part = {
   id: string;
@@ -13,6 +14,7 @@ type Part = {
   archived: boolean;
   archivedAt: string | null;
   jobWorkOrders: string[];
+  labelJobs: { number: string; quantity: number }[];
 };
 
 type PartGroup = {
@@ -263,7 +265,18 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3" />
+                    <td
+                      className="whitespace-nowrap px-4 py-3 text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {g.locations.length === 1 && (
+                        <ReceiptLabelButton
+                          partNumber={g.partNumber}
+                          jobOptions={g.locations[0].labelJobs ?? []}
+                          unit={g.unit}
+                        />
+                      )}
+                    </td>
                   </tr>
 
                   {/* Expanded location rows */}
@@ -296,12 +309,19 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-4 py-2 text-right">
-                          <Link
-                            href={`/admin/parts/${loc.id}`}
-                            className="text-xs text-shelley-blue hover:underline"
-                          >
-                            {loc.archived ? "View / Unarchive" : "Edit"}
-                          </Link>
+                          <div className="flex items-center justify-end gap-3">
+                            <ReceiptLabelButton
+                              partNumber={g.partNumber}
+                              jobOptions={loc.labelJobs ?? []}
+                              unit={g.unit}
+                            />
+                            <Link
+                              href={`/admin/parts/${loc.id}`}
+                              className="text-xs text-shelley-blue hover:underline"
+                            >
+                              {loc.archived ? "View / Unarchive" : "Edit"}
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))}

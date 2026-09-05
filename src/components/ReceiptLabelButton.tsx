@@ -52,11 +52,18 @@ const LABEL_SIZES: LabelDimensions[] = [
   },
 ];
 
+type JobOption = {
+  number: string;
+  quantity: number;
+};
+
 type Props = {
   partNumber: string;
   jobWorkOrderNumber?: string;
-  quantity: number;
+  jobOptions?: JobOption[];
+  quantity?: number;
   unit: string;
+  quantityCaption?: string;
   className?: string;
 };
 
@@ -76,20 +83,39 @@ function matrixText(partNumber: string, jobWorkOrderNumber: string) {
 export function ReceiptLabelButton({
   partNumber,
   jobWorkOrderNumber,
+  jobOptions,
   quantity,
   unit,
+  quantityCaption = "Initial qty",
   className = "",
 }: Props) {
+  const options =
+    jobOptions && jobOptions.length > 0
+      ? jobOptions
+      : jobWorkOrderNumber && quantity != null
+        ? [{ number: jobWorkOrderNumber, quantity }]
+        : [];
   const [open, setOpen] = useState(false);
   const [sizeName, setSizeName] = useState<LabelSize>("2x3");
+  const [selectedJob, setSelectedJob] = useState(options[0]?.number ?? "");
   const [error, setError] = useState("");
   const [generating, setGenerating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const size = LABEL_SIZES.find((option) => option.name === sizeName)!;
   const unitLabel = unit === "FEET" ? "ft" : "ea";
+  const selected = options.find((job) => job.number === selectedJob) ?? options[0];
+  const activeJob = selected?.number;
+  const activeQty = selected?.quantity;
 
   useEffect(() => {
-    if (!open || !jobWorkOrderNumber || !canvasRef.current) return;
+    if (!open) return;
+    setSelectedJob(options[0]?.number ?? "");
+    // options[0] is the current Job/WO; reset when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !activeJob || !canvasRef.current) return;
     let cancelled = false;
     setGenerating(true);
 
@@ -98,7 +124,7 @@ export function ReceiptLabelButton({
         if (cancelled || !canvasRef.current) return;
         bwipjs.toCanvas(canvasRef.current, {
           bcid: "datamatrix",
-          text: matrixText(partNumber, jobWorkOrderNumber),
+          text: matrixText(partNumber, activeJob),
           scale: 4,
           paddingwidth: 0,
           paddingheight: 0,
@@ -115,10 +141,10 @@ export function ReceiptLabelButton({
     return () => {
       cancelled = true;
     };
-  }, [open, partNumber, jobWorkOrderNumber, sizeName]);
+  }, [open, partNumber, activeJob, sizeName]);
 
   function printLabel() {
-    if (!jobWorkOrderNumber || !canvasRef.current) return;
+    if (!activeJob || activeQty == null || !canvasRef.current) return;
 
     const printWindow = window.open("", "_blank", "popup,width=900,height=700");
     if (!printWindow) {
@@ -129,7 +155,7 @@ export function ReceiptLabelButton({
     const matrixDataUrl = canvasRef.current.toDataURL("image/png");
     const logoUrl = `${window.location.origin}/logo.png`;
     const safePart = escapeHtml(partNumber);
-    const safeJob = escapeHtml(jobWorkOrderNumber);
+    const safeJob = escapeHtml(activeJob);
 
     printWindow.document.write(`<!doctype html>
 <html>
@@ -233,8 +259,8 @@ export function ReceiptLabelButton({
           <p class="detail-value">${safeJob}</p>
         </div>
         <div class="quantity">
-          <p class="field-label">Initial qty</p>
-          <p class="detail-value">${quantity} ${unitLabel}</p>
+          <p class="field-label">${escapeHtml(quantityCaption)}</p>
+          <p class="detail-value">${activeQty} ${unitLabel}</p>
         </div>
       </div>
     </section>
@@ -260,7 +286,7 @@ export function ReceiptLabelButton({
     }
   }
 
-  if (!jobWorkOrderNumber) {
+  if (options.length === 0) {
     return (
       <button
         type="button"
@@ -300,7 +326,8 @@ export function ReceiptLabelButton({
                   Print receipt label
                 </h2>
                 <p className="mt-1 text-sm text-shelley-gray">
-                  Select the label loaded in your printer.
+                  Select the label loaded in your printer
+                  {options.length > 1 ? " and the Job/WO to print." : "."}
                 </p>
               </div>
               <button
@@ -312,6 +339,25 @@ export function ReceiptLabelButton({
                 ×
               </button>
             </div>
+
+            {options.length > 1 && (
+              <div className="mt-4">
+                <label className="mb-1 block text-xs font-medium uppercase text-shelley-gray">
+                  Job/WO to print
+                </label>
+                <select
+                  value={selectedJob}
+                  onChange={(e) => setSelectedJob(e.target.value)}
+                  className="input-field max-w-sm text-sm"
+                >
+                  {options.map((job) => (
+                    <option key={job.number} value={job.number}>
+                      {job.number} — {job.quantity} {unitLabel}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="mt-4 flex flex-wrap gap-2">
               {LABEL_SIZES.map((option) => (
@@ -358,13 +404,13 @@ export function ReceiptLabelButton({
                     <div className="min-w-0">
                       <p className="text-[8px] font-bold uppercase tracking-wider text-black">Job / WO</p>
                       <p className="break-all text-[clamp(10px,2vw,18px)] font-bold leading-none text-black">
-                        {jobWorkOrderNumber}
+                        {activeJob}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-[8px] font-bold uppercase tracking-wider text-black">Initial qty</p>
+                      <p className="text-[8px] font-bold uppercase tracking-wider text-black">{quantityCaption}</p>
                       <p className="text-[clamp(10px,2vw,18px)] font-bold leading-none text-black">
-                        {quantity} {unitLabel}
+                        {activeQty} {unitLabel}
                       </p>
                     </div>
                   </div>
