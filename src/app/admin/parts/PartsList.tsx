@@ -12,6 +12,7 @@ type Part = {
   currentQuantity: number;
   archived: boolean;
   archivedAt: string | null;
+  jobWorkOrders: string[];
 };
 
 type PartGroup = {
@@ -20,15 +21,20 @@ type PartGroup = {
   unit: string;
   totalQuantity: number;
   locations: Part[];
+  jobWorkOrders: string[];
 };
 
 function groupParts(parts: Part[]): PartGroup[] {
   const map = new Map<string, PartGroup>();
   for (const p of parts) {
+    const jobs = p.jobWorkOrders ?? [];
     const existing = map.get(p.partNumber);
     if (existing) {
       existing.totalQuantity += p.currentQuantity;
       existing.locations.push(p);
+      for (const job of jobs) {
+        if (!existing.jobWorkOrders.includes(job)) existing.jobWorkOrders.push(job);
+      }
     } else {
       map.set(p.partNumber, {
         partNumber: p.partNumber,
@@ -36,10 +42,34 @@ function groupParts(parts: Part[]): PartGroup[] {
         unit: p.unit,
         totalQuantity: p.currentQuantity,
         locations: [p],
+        jobWorkOrders: [...jobs],
       });
     }
   }
   return Array.from(map.values());
+}
+
+function JobWorkOrderChips({ jobs, limit = 3 }: { jobs: string[]; limit?: number }) {
+  if (jobs.length === 0) return <span className="text-shelley-gray">—</span>;
+  const shown = jobs.slice(0, limit);
+  const hidden = jobs.length - shown.length;
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {shown.map((job) => (
+        <span
+          key={job}
+          className="rounded-md bg-shelley-blue/10 px-2 py-0.5 text-xs font-medium text-shelley-blue"
+        >
+          {job}
+        </span>
+      ))}
+      {hidden > 0 && (
+        <span className="text-xs text-shelley-gray" title={jobs.join(", ")}>
+          +{hidden} more
+        </span>
+      )}
+    </span>
+  );
 }
 
 export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
@@ -47,6 +77,7 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
+  const [jobFilter, setJobFilter] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -71,9 +102,9 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
 
   if (loading) return <p className="text-shelley-gray">Loading parts…</p>;
 
-  const groups = groupParts(parts);
+  const allGroups = groupParts(parts);
 
-  if (groups.length === 0)
+  if (allGroups.length === 0)
     return (
       <div className="space-y-3">
         <div className="flex justify-end">
@@ -90,13 +121,44 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
     );
 
+  const jobQuery = jobFilter.trim().toLowerCase();
+  const groups = jobQuery
+    ? allGroups.filter((g) =>
+        g.jobWorkOrders.some((job) => job.toLowerCase().includes(jobQuery))
+      )
+    : allGroups;
+
   const archivedGroupCount = groups.filter((g) => g.locations.every((l) => l.archived)).length;
 
   return (
     <div className="space-y-3">
+      <div className="card p-4">
+        <label className="mb-1 block text-xs font-medium uppercase text-shelley-gray">
+          Job/WO number
+        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="text"
+            value={jobFilter}
+            onChange={(e) => setJobFilter(e.target.value)}
+            placeholder="Filter parts by Job/WO — e.g. WO-5678"
+            className="input-field max-w-sm flex-1 text-sm"
+          />
+          {jobFilter && (
+            <button
+              onClick={() => setJobFilter("")}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-shelley-gray hover:bg-gray-50"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-shelley-gray">
           {groups.length} part{groups.length !== 1 ? "s" : ""}
+          {jobQuery && <span className="ml-1">matching &ldquo;{jobFilter.trim()}&rdquo;</span>}
           {archivedGroupCount > 0 && showArchived && (
             <span className="ml-2 text-amber-600">({archivedGroupCount} archived)</span>
           )}
@@ -113,6 +175,11 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
         </button>
       </div>
 
+    {groups.length === 0 ? (
+      <div className="card text-center text-shelley-gray">
+        No parts are associated with a Job/WO matching &ldquo;{jobFilter.trim()}&rdquo;.
+      </div>
+    ) : (
     <div className="card overflow-hidden p-0">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
@@ -127,6 +194,9 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">
                 Locations
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">
+                Job/WO
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-shelley-gray">
                 Total on hand
@@ -180,6 +250,9 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
                         ? g.locations[0].location || "No location"
                         : `${g.locations.length} locations`}
                     </td>
+                    <td className="px-4 py-3 text-sm">
+                      <JobWorkOrderChips jobs={g.jobWorkOrders} />
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       <span className={`font-semibold ${isLow ? "text-shelley-red" : allArchived ? "text-shelley-gray" : "text-shelley-blue"}`}>
                         {displayQty} {ul}
@@ -214,6 +287,9 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
                             </span>
                           )}
                         </td>
+                        <td className="px-4 py-2 text-sm">
+                          <JobWorkOrderChips jobs={loc.jobWorkOrders ?? []} />
+                        </td>
                         <td className="whitespace-nowrap px-4 py-2 text-right text-sm">
                           <span className={loc.currentQuantity === 0 ? "text-shelley-red font-medium" : "font-medium text-shelley-blue"}>
                             {loc.currentQuantity} {ul}
@@ -236,6 +312,7 @@ export function PartsList({ refreshKey = 0 }: { refreshKey?: number }) {
         </table>
       </div>
     </div>
+    )}
     </div>
   );
 }

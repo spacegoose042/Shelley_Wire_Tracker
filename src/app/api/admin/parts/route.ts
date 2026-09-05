@@ -38,10 +38,27 @@ export async function GET(request: Request) {
   const parts = await prisma.part.findMany({
     where: Object.keys(where).length > 0 ? where : undefined,
     orderBy: [{ partNumber: "asc" }, { location: "asc" }],
+    include: {
+      receipts: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          jobWorkOrders: {
+            orderBy: { createdAt: "desc" },
+            select: { number: true },
+          },
+        },
+      },
+    },
   });
 
   return NextResponse.json(
-    parts.map((p) => ({ ...p, currentQuantity: Number(p.currentQuantity) }))
+    parts.map(({ receipts, ...p }) => ({
+      ...p,
+      currentQuantity: Number(p.currentQuantity),
+      jobWorkOrders: Array.from(
+        new Set(receipts.flatMap((r) => r.jobWorkOrders.map((j) => j.number)))
+      ),
+    }))
   );
 }
 
