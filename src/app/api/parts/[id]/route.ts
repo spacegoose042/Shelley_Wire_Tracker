@@ -12,7 +12,16 @@ const updateSchema = z.object({
   currentQuantity: z.number().min(0).optional(),
   addQuantity: z.number().positive().optional(),
   notes: z.string().optional(),
+  jobWorkOrderNumber: z.string().trim().min(1).optional(),
   archived: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  if (data.addQuantity !== undefined && !data.jobWorkOrderNumber) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["jobWorkOrderNumber"],
+      message: "Job/WO number is required when receiving inventory.",
+    });
+  }
 });
 
 export async function GET(
@@ -104,6 +113,12 @@ export async function PATCH(
           quantity: data.addQuantity,
           notes: data.notes?.trim() || null,
           userId: session.user.id ?? null,
+          jobWorkOrders: {
+            create: {
+              number: data.jobWorkOrderNumber!,
+              addedByUserId: session.user.id ?? null,
+            },
+          },
         },
       }),
     ]);

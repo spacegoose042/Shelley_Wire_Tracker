@@ -10,6 +10,16 @@ const createPartSchema = z.object({
   location: z.string().optional(),
   unit: z.enum(["FEET", "EACH"]).default("FEET"),
   currentQuantity: z.number().min(0).default(0),
+  notes: z.string().optional(),
+  jobWorkOrderNumber: z.string().trim().min(1).optional(),
+}).superRefine((data, ctx) => {
+  if (data.currentQuantity > 0 && !data.jobWorkOrderNumber) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["jobWorkOrderNumber"],
+      message: "Job/WO number is required when receiving initial inventory.",
+    });
+  }
 });
 
 export async function GET(request: Request) {
@@ -58,14 +68,35 @@ export async function POST(request: Request) {
   if (existing)
     return NextResponse.json({ error: "This part number already exists at this location" }, { status: 400 });
 
-  const part = await prisma.part.create({
-    data: {
-      partNumber: parsed.data.partNumber,
-      description: parsed.data.description ?? null,
-      location,
-      unit: parsed.data.unit,
-      currentQuantity: parsed.data.currentQuantity,
-    },
+  const part = await prisma.$transaction(async (tx) => {
+    const created = await tx.part.create({
+      data: {
+        partNumber: parsed.data.partNumber,
+        description: parsed.data.description ?? null,
+        location,
+        unit: parsed.data.unit,
+        currentQuantity: parsed.data.currentQuantity,
+      },
+    });
+
+    if (parsed.data.currentQuantity > 0) {
+      await tx.inventoryReceipt.create({
+        data: {
+          partId: created.id,
+          quantity: parsed.data.currentQuantity,
+          notes: parsed.data.notes?.trim() || null,
+          userId: session.user.id ?? null,
+          jobWorkOrders: {
+            create: {
+              number: parsed.data.jobWorkOrderNumber!,
+              addedByUserId: session.user.id ?? null,
+            },
+          },
+        },
+      });
+    }
+
+    return created;
   });
 
   return NextResponse.json({

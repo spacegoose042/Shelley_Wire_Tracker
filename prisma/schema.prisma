@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  role         Role     @default(TECHNICIAN)
-  createdAt    DateTime @default(now())
-  transactions Transaction[]
-  receipts     InventoryReceipt[]
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  passwordHash         String
+  name                 String?
+  role                 Role                  @default(TECHNICIAN)
+  createdAt            DateTime              @default(now())
+  transactions         Transaction[]
+  receipts             InventoryReceipt[]
+  receiptJobWorkOrders ReceiptJobWorkOrder[]
 }
 
 enum Role {
@@ -24,16 +25,16 @@ enum Role {
 }
 
 model Part {
-  id              String    @id @default(cuid())
+  id              String             @id @default(cuid())
   partNumber      String
   description     String?
-  location        String    @default("")
-  unit            Unit      @default(FEET)
-  currentQuantity Decimal   @default(0) @db.Decimal(12, 2)
-  archived        Boolean   @default(false)
+  location        String             @default("")
+  unit            Unit               @default(FEET)
+  currentQuantity Decimal            @default(0) @db.Decimal(12, 2)
+  archived        Boolean            @default(false)
   archivedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
   lines           TransactionLine[]
   receipts        InventoryReceipt[]
 
@@ -41,14 +42,28 @@ model Part {
 }
 
 model InventoryReceipt {
-  id        String   @id @default(cuid())
-  partId    String
-  part      Part     @relation(fields: [partId], references: [id], onDelete: Cascade)
-  quantity  Decimal  @db.Decimal(12, 2)
-  notes     String?
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
+  id            String                @id @default(cuid())
+  partId        String
+  part          Part                  @relation(fields: [partId], references: [id], onDelete: Cascade)
+  quantity      Decimal               @db.Decimal(12, 2)
+  notes         String?
+  userId        String?
+  user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt     DateTime              @default(now())
+  jobWorkOrders ReceiptJobWorkOrder[]
+}
+
+model ReceiptJobWorkOrder {
+  id            String           @id @default(cuid())
+  receiptId     String
+  receipt       InventoryReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  number        String
+  addedByUserId String?
+  addedBy       User?            @relation(fields: [addedByUserId], references: [id], onDelete: SetNull)
+  createdAt     DateTime         @default(now())
+
+  @@unique([receiptId, number])
+  @@index([number])
 }
 
 enum Unit {
@@ -57,20 +72,20 @@ enum Unit {
 }
 
 model Transaction {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobName    String
-  processed  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  lines      TransactionLine[]
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobName   String
+  processed Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  lines     TransactionLine[]
 }
 
 model TransactionLine {
-  id            String   @id @default(cuid())
+  id            String      @id @default(cuid())
   transactionId String
   transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   partId        String
-  part          Part     @relation(fields: [partId], references: [id], onDelete: Restrict)
-  quantity      Decimal  @db.Decimal(12, 2)
+  part          Part        @relation(fields: [partId], references: [id], onDelete: Restrict)
+  quantity      Decimal     @db.Decimal(12, 2)
 }

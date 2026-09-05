@@ -18,6 +18,10 @@ export async function GET(
     orderBy: { createdAt: "desc" },
     include: {
       user: { select: { name: true, email: true } },
+      jobWorkOrders: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, number: true, createdAt: true },
+      },
     },
   });
 
@@ -26,6 +30,7 @@ export async function GET(
       id: r.id,
       quantity: Number(r.quantity),
       notes: r.notes,
+      jobWorkOrders: r.jobWorkOrders,
       createdAt: r.createdAt,
       receivedBy: r.user ? (r.user.name ?? r.user.email) : null,
     }))

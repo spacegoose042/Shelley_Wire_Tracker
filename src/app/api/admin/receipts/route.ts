@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const partNumber = searchParams.get("partNumber")?.trim() || "";
+  const jobWorkOrderNumber = searchParams.get("jobWorkOrderNumber")?.trim() || "";
   const userId = searchParams.get("userId")?.trim() || "";
   const from = searchParams.get("from")?.trim() || "";
   const to = searchParams.get("to")?.trim() || "";
@@ -18,6 +19,13 @@ export async function GET(request: NextRequest) {
     where: {
       ...(partNumber
         ? { part: { partNumber: { contains: partNumber, mode: "insensitive" } } }
+        : {}),
+      ...(jobWorkOrderNumber
+        ? {
+            jobWorkOrders: {
+              some: { number: { contains: jobWorkOrderNumber, mode: "insensitive" } },
+            },
+          }
         : {}),
       ...(userId ? { userId } : {}),
       ...((from || to)
@@ -33,6 +41,10 @@ export async function GET(request: NextRequest) {
     include: {
       part: { select: { partNumber: true, description: true, location: true, unit: true } },
       user: { select: { name: true, email: true } },
+      jobWorkOrders: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, number: true, createdAt: true },
+      },
     },
   });
 
@@ -45,6 +57,7 @@ export async function GET(request: NextRequest) {
       unit: r.part.unit,
       quantity: Number(r.quantity),
       notes: r.notes,
+      jobWorkOrders: r.jobWorkOrders,
       createdAt: r.createdAt,
       receivedBy: r.user ? (r.user.name ?? r.user.email) : null,
       receivedById: r.userId,

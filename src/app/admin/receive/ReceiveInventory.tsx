@@ -14,8 +14,8 @@ type Part = {
 type Stage =
   | { type: "idle" }
   | { type: "results"; query: string; parts: Part[] }
-  | { type: "receiving"; part: Part; qty: string; notes: string; saving: boolean; error: string }
-  | { type: "done"; part: Part; added: number; newTotal: number }
+  | { type: "receiving"; part: Part; qty: string; jobWorkOrderNumber: string; notes: string; saving: boolean; error: string }
+  | { type: "done"; part: Part; added: number; newTotal: number; jobWorkOrderNumber?: string }
   // Brand-new part number — all fields editable
   | { type: "create-new" }
   // Same part number at a new location — description locked from existing record
@@ -32,6 +32,8 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
   const [formLocation, setFormLocation] = useState("");
   const [formUnit, setFormUnit] = useState<"FEET" | "EACH">("FEET");
   const [formQty, setFormQty] = useState("");
+  const [formJobWorkOrderNumber, setFormJobWorkOrderNumber] = useState("");
+  const [formNotes, setFormNotes] = useState("");
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -56,7 +58,7 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
   }
 
   function startReceive(part: Part) {
-    setStage({ type: "receiving", part, qty: "", notes: "", saving: false, error: "" });
+    setStage({ type: "receiving", part, qty: "", jobWorkOrderNumber: "", notes: "", saving: false, error: "" });
   }
 
   async function submitReceive() {
@@ -66,18 +68,32 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       setStage({ ...stage, error: "Enter a positive quantity." });
       return;
     }
+    if (!stage.jobWorkOrderNumber.trim()) {
+      setStage({ ...stage, error: "Job/WO number is required." });
+      return;
+    }
     setStage({ ...stage, saving: true, error: "" });
     const res = await fetch(`/api/parts/${stage.part.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ addQuantity: qty, notes: stage.notes || undefined }),
+      body: JSON.stringify({
+        addQuantity: qty,
+        jobWorkOrderNumber: stage.jobWorkOrderNumber.trim(),
+        notes: stage.notes || undefined,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setStage({ ...stage, saving: false, error: data.error ?? "Failed to save." });
       return;
     }
-    setStage({ type: "done", part: stage.part, added: qty, newTotal: data.currentQuantity });
+    setStage({
+      type: "done",
+      part: stage.part,
+      added: qty,
+      newTotal: data.currentQuantity,
+      jobWorkOrderNumber: stage.jobWorkOrderNumber.trim(),
+    });
   }
 
   // Open "new location" form — description and part number locked from existing record
@@ -87,6 +103,8 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
     setFormLocation("");
     setFormUnit(existing.unit as "FEET" | "EACH");
     setFormQty("");
+    setFormJobWorkOrderNumber("");
+    setFormNotes("");
     setFormError("");
     setStage({
       type: "create-location",
@@ -103,6 +121,8 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
     setFormLocation("");
     setFormUnit("FEET");
     setFormQty("");
+    setFormJobWorkOrderNumber("");
+    setFormNotes("");
     setFormError("");
     setStage({ type: "create-new" });
   }
@@ -122,13 +142,25 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
 
     const qty = parseFloat(formQty) || 0;
     if (qty < 0) { setFormError("Quantity must be 0 or greater."); return; }
+    if (qty > 0 && !formJobWorkOrderNumber.trim()) {
+      setFormError("Job/WO number is required when entering an initial quantity.");
+      return;
+    }
 
     setFormSaving(true);
     setFormError("");
     const res = await fetch("/api/admin/parts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ partNumber: pn, description: desc, location: loc, unit, currentQuantity: qty }),
+      body: JSON.stringify({
+        partNumber: pn,
+        description: desc,
+        location: loc,
+        unit,
+        currentQuantity: qty,
+        jobWorkOrderNumber: formJobWorkOrderNumber.trim() || undefined,
+        notes: formNotes.trim() || undefined,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     setFormSaving(false);
@@ -136,7 +168,13 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
       setFormError(data.error ?? "Failed to create part.");
       return;
     }
-    setStage({ type: "done", part: data, added: qty, newTotal: data.currentQuantity });
+    setStage({
+      type: "done",
+      part: data,
+      added: qty,
+      newTotal: data.currentQuantity,
+      jobWorkOrderNumber: formJobWorkOrderNumber.trim() || undefined,
+    });
   }
 
   function reset() {
@@ -257,6 +295,8 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
                   setFormLocation("");
                   setFormUnit("FEET");
                   setFormQty("");
+                  setFormJobWorkOrderNumber("");
+                  setFormNotes("");
                   setFormError("");
                   setStage({ type: "create-new" });
                 }}
@@ -288,7 +328,7 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
               Current on hand: {stage.part.currentQuantity} {stage.part.unit === "FEET" ? "ft" : "ea"}
             </p>
           </div>
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap gap-3">
             <div className="w-48">
               <label className="mb-1 block text-sm font-medium text-shelley-gray">
                 Quantity received ({stage.part.unit === "FEET" ? "ft" : "ea"})
@@ -304,6 +344,20 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
                 onKeyDown={(e) => { if (e.key === "Enter") submitReceive(); }}
               />
             </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="mb-1 block text-sm font-medium text-shelley-gray">
+                Job/WO number <span className="text-shelley-red">*</span>
+              </label>
+              <input
+                type="text"
+                value={stage.jobWorkOrderNumber}
+                onChange={(e) => setStage({ ...stage, jobWorkOrderNumber: e.target.value })}
+                className="input-field"
+                placeholder="e.g. JOB-1234 or WO-5678"
+                required
+              />
+            </div>
+            <div className="basis-full" />
             <div className="flex-1 min-w-[200px]">
               <label className="mb-1 block text-sm font-medium text-shelley-gray">
                 Notes <span className="font-normal">(optional — PO #, vendor, etc.)</span>
@@ -424,6 +478,35 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
               </div>
             </div>
 
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <label className="mb-1 block text-sm font-medium text-shelley-gray">
+                  Job/WO number
+                  {Number(formQty) > 0 && <span className="text-shelley-red"> *</span>}
+                </label>
+                <input
+                  type="text"
+                  value={formJobWorkOrderNumber}
+                  onChange={(e) => setFormJobWorkOrderNumber(e.target.value)}
+                  className="input-field"
+                  placeholder="Required when initial quantity is greater than 0"
+                  required={Number(formQty) > 0}
+                />
+              </div>
+              <div className="flex-1 min-w-[240px]">
+                <label className="mb-1 block text-sm font-medium text-shelley-gray">
+                  Receipt notes <span className="font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  className="input-field"
+                  placeholder="PO #, vendor, etc."
+                />
+              </div>
+            </div>
+
             {formError && <p className="text-sm text-shelley-red">{formError}</p>}
             <div className="flex gap-3">
               <button type="submit" className="btn-primary" disabled={formSaving}>
@@ -449,6 +532,9 @@ export function ReceiveInventory({ initialQuery = "" }: { initialQuery?: string 
             </p>
             {stage.part.description && <p className="text-shelley-gray">{stage.part.description}</p>}
             <p className="text-shelley-gray">Added: {stage.added} {stage.part.unit === "FEET" ? "ft" : "ea"}</p>
+            {stage.jobWorkOrderNumber && (
+              <p className="text-shelley-gray">Job/WO: {stage.jobWorkOrderNumber}</p>
+            )}
             <p className="font-medium text-shelley-gray">
               New on-hand total: {stage.newTotal} {stage.part.unit === "FEET" ? "ft" : "ea"}
             </p>

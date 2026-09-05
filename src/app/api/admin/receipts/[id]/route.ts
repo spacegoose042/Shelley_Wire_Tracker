@@ -7,12 +7,16 @@ import { z } from "zod";
 const patchSchema = z.object({
   quantity: z.number().positive().optional(),
   notes: z.string().optional(),
+  jobWorkOrderNumber: z.string().trim().min(1).optional(),
 });
 
 async function getReceipt(id: string) {
   return prisma.inventoryReceipt.findUnique({
     where: { id },
-    include: { part: { select: { id: true, partNumber: true, location: true, unit: true, currentQuantity: true } } },
+    include: {
+      part: { select: { id: true, partNumber: true, location: true, unit: true, currentQuantity: true } },
+      jobWorkOrders: { orderBy: { createdAt: "asc" } },
+    },
   });
 }
 
@@ -59,18 +63,48 @@ export async function PATCH(
   if (parsed.data.quantity !== undefined) updateData.quantity = newQty;
   if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes.trim() || null;
 
-  const [updated] = await prisma.$transaction([
-    prisma.inventoryReceipt.update({ where: { id }, data: updateData }),
-    ...(delta !== 0
-      ? [prisma.part.update({ where: { id: receipt.partId }, data: { currentQuantity: { increment: delta } } })]
-      : []),
-  ]);
+  if (
+    parsed.data.jobWorkOrderNumber &&
+    receipt.jobWorkOrders.some((job) => job.number === parsed.data.jobWorkOrderNumber)
+  ) {
+    return NextResponse.json(
+      { error: "That Job/WO number is already associated with this receipt." },
+      { status: 400 }
+    );
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const saved = await tx.inventoryReceipt.update({ where: { id }, data: updateData });
+    if (delta !== 0) {
+      await tx.part.update({
+        where: { id: receipt.partId },
+        data: { currentQuantity: { increment: delta } },
+      });
+    }
+    if (parsed.data.jobWorkOrderNumber) {
+      await tx.receiptJobWorkOrder.create({
+        data: {
+          receiptId: id,
+          number: parsed.data.jobWorkOrderNumber,
+          addedByUserId: session.user.id ?? null,
+        },
+      });
+    }
+    return saved;
+  });
+
+  const jobWorkOrders = await prisma.receiptJobWorkOrder.findMany({
+    where: { receiptId: id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, number: true, createdAt: true },
+  });
 
   return NextResponse.json({
     id: updated.id,
     quantity: Number(updated.quantity),
     notes: updated.notes,
     createdAt: updated.createdAt,
+    jobWorkOrders,
   });
 }
 

@@ -11,6 +11,7 @@ type Receipt = {
   unit: string;
   quantity: number;
   notes: string | null;
+  jobWorkOrders: { id: string; number: string; createdAt: string }[];
   createdAt: string;
   receivedBy: string | null;
   receivedById: string | null;
@@ -21,6 +22,7 @@ type User = { id: string; name: string | null; email: string };
 type EditState = {
   quantity: string;
   notes: string;
+  jobWorkOrderNumber: string;
   saving: boolean;
   error: string;
   confirmDelete: boolean;
@@ -36,12 +38,27 @@ function fmt(dateStr: string) {
   });
 }
 
+function JobWorkOrderHistory({ jobs }: { jobs: Receipt["jobWorkOrders"] }) {
+  if (jobs.length === 0) return <>—</>;
+  return (
+    <div className="space-y-1">
+      {jobs.map((job) => (
+        <div key={job.id}>
+          <span className="font-medium text-shelley-blue">{job.number}</span>
+          <span className="ml-1 text-xs text-shelley-gray">added {fmt(job.createdAt)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ReceiptsList() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [partNumber, setPartNumber] = useState("");
+  const [jobWorkOrderNumber, setJobWorkOrderNumber] = useState("");
   const [userId, setUserId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -51,6 +68,7 @@ export function ReceiptsList() {
   const [editState, setEditState] = useState<EditState>({
     quantity: "",
     notes: "",
+    jobWorkOrderNumber: "",
     saving: false,
     error: "",
     confirmDelete: false,
@@ -60,6 +78,7 @@ export function ReceiptsList() {
     setLoading(true);
     const params = new URLSearchParams();
     if (partNumber) params.set("partNumber", partNumber);
+    if (jobWorkOrderNumber) params.set("jobWorkOrderNumber", jobWorkOrderNumber);
     if (userId) params.set("userId", userId);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
@@ -68,7 +87,7 @@ export function ReceiptsList() {
       .then((d) => setReceipts(Array.isArray(d) ? d : []))
       .catch(() => setReceipts([]))
       .finally(() => setLoading(false));
-  }, [partNumber, userId, from, to]);
+  }, [partNumber, jobWorkOrderNumber, userId, from, to]);
 
   useEffect(() => {
     fetch("/api/admin/users")
@@ -86,6 +105,7 @@ export function ReceiptsList() {
     setEditState({
       quantity: String(r.quantity),
       notes: r.notes ?? "",
+      jobWorkOrderNumber: "",
       saving: false,
       error: "",
       confirmDelete: false,
@@ -106,7 +126,11 @@ export function ReceiptsList() {
     const res = await fetch(`/api/admin/receipts/${r.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quantity: qty, notes: editState.notes }),
+      body: JSON.stringify({
+        quantity: qty,
+        notes: editState.notes,
+        jobWorkOrderNumber: editState.jobWorkOrderNumber.trim() || undefined,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -155,6 +179,17 @@ export function ReceiptsList() {
         </div>
 
         <div className="flex-1 min-w-[160px]">
+          <label className="mb-1 block text-xs font-medium text-shelley-gray uppercase">Job/WO number</label>
+          <input
+            type="text"
+            value={jobWorkOrderNumber}
+            onChange={(e) => setJobWorkOrderNumber(e.target.value)}
+            placeholder="e.g. WO-5678"
+            className="input-field text-sm"
+          />
+        </div>
+
+        <div className="flex-1 min-w-[160px]">
           <label className="mb-1 block text-xs font-medium text-shelley-gray uppercase">Received by</label>
           <select
             value={userId}
@@ -192,7 +227,13 @@ export function ReceiptsList() {
 
         <div className="flex items-end">
           <button
-            onClick={() => { setPartNumber(""); setUserId(""); setFrom(""); setTo(""); }}
+            onClick={() => {
+              setPartNumber("");
+              setJobWorkOrderNumber("");
+              setUserId("");
+              setFrom("");
+              setTo("");
+            }}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-shelley-gray hover:bg-gray-50"
           >
             Clear
@@ -230,6 +271,7 @@ export function ReceiptsList() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">Description</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">Location</th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase text-shelley-gray">Qty received</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">Job/WO history</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">Received by</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-shelley-gray">Notes</th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase text-shelley-gray">Edit</th>
@@ -252,6 +294,9 @@ export function ReceiptsList() {
                           <td className="px-4 py-2 text-right text-sm text-shelley-gray">
                             <span className="line-through opacity-50">+{r.quantity} {ul}</span>
                           </td>
+                          <td className="px-4 py-2 text-sm text-shelley-gray">
+                            <JobWorkOrderHistory jobs={r.jobWorkOrders} />
+                          </td>
                           <td className="px-4 py-2 text-sm text-shelley-gray">{r.receivedBy ?? "—"}</td>
                           <td className="px-4 py-2 text-sm text-shelley-gray">
                             <span className="line-through opacity-50">{r.notes || "—"}</span>
@@ -261,7 +306,7 @@ export function ReceiptsList() {
 
                         {/* Edit row */}
                         <tr key={`${r.id}-edit`} className="bg-blue-50">
-                          <td colSpan={8} className="px-4 py-3">
+                          <td colSpan={9} className="px-4 py-3">
                             <div className="flex flex-wrap items-start gap-3">
                               <div className="w-32">
                                 <label className="mb-1 block text-xs font-medium text-shelley-gray">
@@ -284,6 +329,18 @@ export function ReceiptsList() {
                                   value={editState.notes}
                                   onChange={(e) => setEditState((s) => ({ ...s, notes: e.target.value }))}
                                   placeholder="PO #, vendor, etc."
+                                  className="input-field"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-[200px]">
+                                <label className="mb-1 block text-xs font-medium text-shelley-gray">
+                                  Add Job/WO <span className="font-normal">(keeps prior history)</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editState.jobWorkOrderNumber}
+                                  onChange={(e) => setEditState((s) => ({ ...s, jobWorkOrderNumber: e.target.value }))}
+                                  placeholder="New Job/WO number"
                                   className="input-field"
                                 />
                               </div>
@@ -356,6 +413,9 @@ export function ReceiptsList() {
                       <td className="px-4 py-3 text-sm text-shelley-gray">{r.location || "—"}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-shelley-blue">
                         +{r.quantity} {ul}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-shelley-gray">
+                        <JobWorkOrderHistory jobs={r.jobWorkOrders} />
                       </td>
                       <td className="px-4 py-3 text-sm text-shelley-gray">{r.receivedBy ?? "—"}</td>
                       <td className="px-4 py-3 text-sm text-shelley-gray">{r.notes || "—"}</td>
