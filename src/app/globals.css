@@ -28,4 +28,83 @@ body {
   .card {
     @apply rounded-xl border border-gray-200 bg-white p-6 shadow-sm;
   }
+
+  .qms-document {
+    @apply text-[15px] leading-7 text-slate-700;
+  }
+  .qms-h1 {
+    @apply mb-3 text-3xl font-semibold leading-tight text-shelley-blue;
+  }
+  .qms-h2 {
+    @apply mb-3 mt-10 scroll-mt-20 border-b border-gray-200 pb-2 text-xl font-semibold text-shelley-blue;
+  }
+  .qms-h3 {
+    @apply mb-2 mt-7 scroll-mt-20 text-lg font-semibold text-slate-800;
+  }
+  .qms-paragraph {
+    @apply my-4;
+  }
+  .qms-list {
+    @apply my-4 list-disc space-y-1 pl-6;
+  }
+  .qms-ordered {
+    @apply list-decimal;
+  }
+  .qms-check {
+    @apply flex cursor-pointer items-start gap-2;
+  }
+  .qms-check input {
+    @apply mt-1.5 h-4 w-4 rounded border-gray-300 text-shelley-blue focus:ring-shelley-blue;
+  }
+  .qms-rule {
+    @apply my-8 border-gray-200;
+  }
+  .qms-code {
+    @apply my-5 overflow-x-auto rounded-lg bg-slate-900 p-4 font-mono text-xs leading-5 text-slate-100;
+  }
+  .qms-document code:not(.qms-code code) {
+    @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-sm text-slate-800;
+  }
+  .qms-quote {
+    @apply my-5 border-l-4 border-shelley-blue bg-blue-50 p-4 italic text-slate-700;
+  }
+  .qms-table-wrap {
+    @apply my-5 overflow-x-auto rounded-lg border border-gray-200;
+  }
+  .qms-table {
+    @apply min-w-full border-collapse text-left text-sm leading-5;
+  }
+  .qms-table th {
+    @apply border-b border-gray-200 bg-slate-50 px-4 py-3 font-semibold text-slate-800;
+  }
+  .qms-table td {
+    @apply border-b border-gray-100 px-4 py-3 align-top;
+  }
+  .qms-table tr:last-child td {
+    @apply border-b-0;
+  }
+  .qms-document mark {
+    @apply rounded bg-yellow-200 px-0.5 text-slate-900;
+  }
+}
+
+@media print {
+  header,
+  nav,
+  aside,
+  button,
+  input,
+  select,
+  textarea {
+    display: none !important;
+  }
+  body,
+  main,
+  .qms-document {
+    background: white !important;
+    color: black !important;
+  }
+  .qms-document {
+    padding: 0 !important;
+  }
 }

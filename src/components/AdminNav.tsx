@@ -9,6 +9,7 @@ const adminLinks = [
   { href: "/admin/receipts", label: "Receipt history" },
   { href: "/admin/transactions", label: "Transactions" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/qms", label: "Quality system" },
 ];
 
 export function AdminNav() {
